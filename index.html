@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ZENITH CHAMPIONSHIP</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@twemoji/api@15.0.3/dist/twemoji.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/variables.css" />
+<link rel="stylesheet" href="css/layout.css" />
+<link rel="stylesheet" href="css/components.css" />
+<link rel="stylesheet" href="css/tables.css" />
+<link rel="stylesheet" href="css/forms.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+<link rel="stylesheet" href="css/public.css" />
+</head>
+<body>
+<div id="app" class="app-shell public-mode">
+
+  <!-- ═══════════ HEADER SUPERIOR ═══════════ -->
+  <header class="public-topbar" id="publicTopbar">
+
+    <button class="public-menu-toggle" id="menuToggle" aria-label="Menu">☰</button>
+
+    <div class="topbar-brand">
+      <img src="logo.png" alt="ZENITH" class="topbar-logo" onerror="this.style.display='none'">
+      <span class="topbar-name">ZENITH</span>
+    </div>
+
+    <div class="topbar-sep"></div>
+
+    <nav class="topbar-nav" id="topbarNav">
+      <a class="topbar-nav-item" data-route="dashboard">HOME</a>
+      <a class="topbar-nav-item" data-route="matches">JORNADAS</a>
+      <a class="topbar-nav-item" data-route="playoffs">PLAY-OFFS</a>
+      <a class="topbar-nav-item" data-route="players">JUGADORES</a>
+      <a class="topbar-nav-item" data-route="stats">STATS</a>
+      <a class="topbar-nav-item" data-route="ballonDor">BALLON D'OR</a>
+      <a class="topbar-nav-item" data-route="rosters">EQUIPOS</a>
+      <a class="topbar-nav-item" data-route="market">TRANSFER MARKET</a>
+      <a class="topbar-nav-item" data-route="news">NOTICIAS</a>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="season-selector" id="seasonSelector">
+        <button class="chip chip-season chip-season-btn" id="seasonBtn">
+          <span id="currentSeasonName">SEASON 1</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="season-dropdown hidden" id="seasonDropdown"></div>
+      </div>
+
+      <div class="division-selector" id="divisionSelector">
+        <button class="chip chip-division chip-division-btn" id="divisionBtn">
+          <span id="currentDivisionName">ZENITH I</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="division-dropdown hidden" id="divisionDropdown"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════ SIDEBAR MÓVIL ═══════════ -->
+  <aside class="public-sidebar" id="publicSidebar">
+    <div class="public-sidebar-head">
+      <span class="topbar-name">ZENITH</span>
+      <button class="public-sidebar-close" id="sidebarClose">✕</button>
+    </div>
+    <nav class="public-sidebar-nav">
+      <a data-route="dashboard">Home</a>
+      <a data-route="matches">Jornadas</a>
+      <a data-route="playoffs">Play-Offs</a>
+      <a data-route="players">Jugadores</a>
+      <a data-route="stats">Stats</a>
+      <a data-route="ballonDor">Ballon d'Or</a>
+      <a data-route="rosters">Equipos</a>
+      <a data-route="market">Transfer Market</a>
+      <a data-route="news">Noticias</a>
+    </nav>
+  </aside>
+
+  <div class="public-sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ═══════════ CONTENIDO ═══════════ -->
+  <main id="view" class="view public-view"></main>
+
+</div>
+
+<div id="modalRoot"></div>
+<div id="toastRoot" class="toast-root"></div>
+
+<script src="config.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

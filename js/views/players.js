@@ -139,7 +139,6 @@ function playerRow(p, i, allStats){
   const rankLine = getRankLabelResponsive(p.rank, p.rankLevel, p.rankDivision);
   const trophies = p.trophies || [];
   
-  // FIX: Determinar si es agente libre
   const isFreeAgent = p.status === 'free_agent' || (!s.teamId);
 
   return `<tr style="cursor:pointer" data-player-profile="${p.id}">
@@ -171,7 +170,7 @@ function playerProfileView(p){
   const stats = allStats.find(s => s.id === p.id) || { games: 0, goals: 0, assists: 0, saves: 0, shots: 0, pig: 0, efficiency: 0, efficiencyOffense: 0, efficiencyDefense: 0, goalsPerMatch: 0, assistsPerMatch: 0, savesPerMatch: 0, shotsPerMatch: 0, pigTrend: '—' };
   
   const rankings = computeRankings(allStats);
-  const streak = streakLabel(stats); // Usa stats (que tiene winStreak y lossStreak actualizados)
+  const streak = streakLabel(stats); 
   const flag = p.nationalityCode ? getNationFlag(p.nationalityCode) : '';
   const nationName = p.nationalityCode ? getNationName(p.nationalityCode) : '';
   const rankColor = getRankColor(p.rank, p.rankLevel);
@@ -181,29 +180,23 @@ function playerProfileView(p){
 
   const priceData = calculatePlayerPrice(p, stats, db.config.economy);
 
-  let divId = p.divisionId;
-  if (!divId) {
-    const t = db.teams.find(t => (t.roster || []).some(r => r.playerId === p.id));
-    if (t) divId = t.divisionId;
-  }
-  const div = divId ? db.divisions.find(d => d.id === divId) : null;
+  // FIX DEFINITIVO: Buscar equipo actual directamente en la DB, ignorando stats viejos
+  const currentTeam = db.teams.find(t => (t.roster || []).some(r => r.playerId === p.id));
+  const div = currentTeam ? db.divisions.find(d => d.id === currentTeam.divisionId) : null;
 
   const rankOf = (map) => map?.get(p.id) || '—';
   const totalRanked = rankings.total || 1;
 
-  // FIX: Lógica de Rachas y Badges
   let streakBadge = '';
   if (stats.winStreak >= 3) {
     streakBadge = `<span class="badge badge-win" style="font-size:12px;padding:4px 10px;">🔥 RACHA POSITIVA (${stats.winStreak})</span>`;
   } else if (stats.lossStreak >= db.config.badStreak.consecutiveLosses) {
     streakBadge = `<span class="badge badge-loss" style="font-size:12px;padding:4px 10px;">📉 MALA RACHA (${stats.lossStreak})</span>`;
   }
-
-  // FIX: Determinar si es agente libre
-  const isFreeAgent = p.status === 'free_agent' || !stats.teamId || stats.teamId === 'null';
-  const teamDisplay = isFreeAgent ? '<span style="color:var(--gold)">AGENTE LIBRE</span>' : esc(stats.teamName || 'Agente libre');
   
-  // FIX: Trend
+  // FIX DEFINITIVO: Si no hay currentTeam, es Agente Libre.
+  const teamDisplay = currentTeam ? esc(currentTeam.name) : '<span style="color:var(--gold)">AGENTE LIBRE</span>';
+  
   const trendSymbol = stats.pigTrend || '—';
 
   return `
@@ -297,6 +290,7 @@ function playerProfileView(p){
 
     ${trophies.length > 0 ? `<div class="card" style="margin-top:18px">${renderVitrina(trophies)}</div>` : ''}
 
+    <!-- FIX: Historial de carrera ahora se llena desde transfers.js -->
     <div class="card" style="margin-top:18px">
       <div class="card-header"><div class="card-title"><span class="dot">◆</span>HISTORIAL DE CARRERA</div></div>
       ${(p.history && p.history.length) ? p.history.map(h => `

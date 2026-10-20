@@ -49,15 +49,27 @@ export function streakLabel(stats){
   const db = getDB();
   const bs = db.config.badStreak;
   if(!bs.enabled) return { label: 'NEUTRA', cls: '' };
-  if(stats.lossStreak >= bs.consecutiveLosses) return { label: 'MALA RACHA', cls: 'badge-loss' };
   if(stats.winStreak >= 3) return { label: 'RACHA POSITIVA', cls: 'badge-win' };
+  if(stats.lossStreak >= bs.consecutiveLosses) return { label: 'MALA RACHA', cls: 'badge-loss' };
   return { label: 'NEUTRA', cls: '' };
+}
+
+export function calculateTrend(player) {
+  const history = player.pigHistory || [];
+  if (history.length < 2) return '—';
+  const recent = history.slice(-5);
+  const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
+  const current = history[history.length - 1];
+  
+  if (current > avgRecent + 0.5) return '▲';
+  if (current < avgRecent - 0.5) return '▼';
+  return '—';
 }
 
 export function ballonDor(players, divisionId=null, seasonId=null){
   return players
     .filter(p => !divisionId || p.divisionId === divisionId)
     .filter(p => !seasonId   || p.seasonId   === seasonId)
-    .map(p => ({ ...p, pig: calculatePIG(p) }))
+    .map(p => ({ ...p, pig: calculatePIG(p), pigTrend: calculateTrend(p) }))
     .sort((a,b) => b.pig - a.pig);
 }

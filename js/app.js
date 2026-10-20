@@ -17,6 +17,7 @@ import { newsView, bindNewsEvents } from './views/news.js';
 import { playoffsView, bindPlayoffsEvents } from './views/playoffs.js';
 import { ballonDorView, bindBallonDorEvents } from './views/ballonDor.js';
 import { marketView, bindMarketEvents } from './views/market.js';
+import { performanceView, bindPerformanceEvents } from './views/performance.js'; // NUEVO
 
 window.addEventListener('error', e => console.error('[ZENITH] error:', e.error || e.message));
 window.addEventListener('unhandledrejection', e => console.error('[ZENITH] promise rejected:', e.reason));
@@ -38,7 +39,6 @@ async function boot() {
     await loadDB();
     loadActiveDivision();
 
-    // ✅ Aplicar tema tras cargar la DB
     safeApplyTheme();
 
     const db = getDB();
@@ -57,6 +57,7 @@ async function boot() {
     registerRoute('playoffs',  playoffsView);
     registerRoute('players',   playersView);
     registerRoute('stats',     statsView);
+    registerRoute('performance', performanceView); // NUEVO
     registerRoute('ballonDor', ballonDorView);
     registerRoute('rosters',   rostersView);
     registerRoute('market',    marketView);
@@ -74,7 +75,6 @@ async function boot() {
     // Realtime
     subscribeToChanges(async () => {
       await reloadDB();
-      // ✅ Re-aplicar tema tras reload remoto
       safeApplyTheme();
       updateHeaderLabels();
       refreshView();
@@ -112,6 +112,7 @@ function renderView(viewFn, params) {
     safeBind(bindPlayersEvents);
     safeBind(bindBallonDorEvents);
     safeBind(bindMarketEvents);
+    safeBind(bindPerformanceEvents); // NUEVO
     updateActiveNav();
     window.scrollTo(0, 0);
   } catch (err) {

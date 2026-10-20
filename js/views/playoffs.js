@@ -5,6 +5,7 @@ import { getDB } from '../services/storage.js';
 import { state } from '../state.js';
 import { getPlayoff, getFormatForRound } from '../services/playoffs.js';
 import { openMatchSummary } from './matchSummary.js';
+import { detectVictoryType } from '../services/economy.js';
 
 // ============================================================
 // LAYOUT
@@ -85,9 +86,6 @@ export function bindPlayoffsEvents(){
   }
 }
 
-// ============================================================
-// RENDER DEL BRACKET
-// ============================================================
 function renderBracketCanvas(){
   const canvas = document.getElementById('bracketCanvas');
   if (!canvas) return;
@@ -209,6 +207,12 @@ function renderNode(m, roundId, idx, x, y, isPlayIn){
   const reported = !!m.winnerId;
   const isBye = m.isBye === true;
   const hasGames = (m.games || []).length > 0;
+  const db = getDB();
+
+  let vType = null;
+  if (reported && !isBye) {
+    vType = detectVictoryType(m.games, m.format, m.winnerId, m.teamA?.teamId, m.teamB?.teamId, db.config.economy);
+  }
 
   const wonA = (m.games || []).filter(g => g.scoreA > g.scoreB).length;
   const wonB = (m.games || []).filter(g => g.scoreB > g.scoreA).length;
@@ -220,7 +224,7 @@ function renderNode(m, roundId, idx, x, y, isPlayIn){
   if (isBye){
     footHTML = `<span class="bracket-v6-foot-text muted">— BYE —</span>`;
   } else if (reported){
-    footHTML = `<span class="bracket-v6-foot-text">✔ FINAL</span>`;
+    footHTML = `<span class="bracket-v6-foot-text">✔ FINAL ${vType ? vType.emoji : ''}</span>`;
   } else if (hasGames){
     footHTML = `<span class="badge badge-live" style="font-size:9px;padding:2px 6px">EN JUEGO</span>`;
   } else if (ready){
@@ -233,9 +237,7 @@ function renderNode(m, roundId, idx, x, y, isPlayIn){
   if (isPlayIn) classes.push('is-playin');
   if (reported && !isBye && hasGames) classes.push('is-reported');
 
-  // ✅ Cambio: clickeable cuando hay partidas jugadas (live o finished)
   const summaryAttr = (!isBye && hasGames) ? `data-summary-match="${roundId}:${idx}"` : '';
-  // Cursor pointer también cuando está en vivo (no solo reportado)
   const cursorStyle = (!isBye && hasGames && !reported) ? 'cursor:pointer;' : '';
 
   return `

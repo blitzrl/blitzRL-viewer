@@ -8,7 +8,7 @@ import { getNationFlag, getNationName, platformIcon, getRankColor, getRankLabelR
 import { openModal } from '../services/ui.js';
 import { renderVitrina } from '../services/trophies.js';
 import { state } from '../state.js';
-import { calculatePlayerPrice } from '../services/economy.js'; // NUEVO
+import { calculatePlayerPrice } from '../services/economy.js';
 
 export function playersView(params = []){
   const db = getDB();
@@ -138,6 +138,10 @@ function playerRow(p, i, allStats){
   const rankColor = getRankColor(p.rank, p.rankLevel);
   const rankLine = getRankLabelResponsive(p.rank, p.rankLevel, p.rankDivision);
   const trophies = p.trophies || [];
+  
+  // FIX: Determinar si es agente libre
+  const isFreeAgent = p.status === 'free_agent' || (!s.teamId);
+
   return `<tr style="cursor:pointer" data-player-profile="${p.id}">
     <td class="col-pos">${i + 1}</td>
     <td class="col-player">
@@ -165,8 +169,9 @@ function playerProfileView(p){
   const db = getDB();
   const allStats = aggregatePlayerStats();
   const stats = allStats.find(s => s.id === p.id) || { games: 0, goals: 0, assists: 0, saves: 0, shots: 0, pig: 0, efficiency: 0, efficiencyOffense: 0, efficiencyDefense: 0, goalsPerMatch: 0, assistsPerMatch: 0, savesPerMatch: 0, shotsPerMatch: 0, pigTrend: '—' };
+  
   const rankings = computeRankings(allStats);
-  const streak = streakLabel(stats);
+  const streak = streakLabel(stats); // Usa stats (que tiene winStreak y lossStreak actualizados)
   const flag = p.nationalityCode ? getNationFlag(p.nationalityCode) : '';
   const nationName = p.nationalityCode ? getNationName(p.nationalityCode) : '';
   const rankColor = getRankColor(p.rank, p.rankLevel);
@@ -174,7 +179,6 @@ function playerProfileView(p){
   const trendColor = { '▲': 'var(--success)', '▼': 'var(--danger)', '—': 'var(--muted)' };
   const trophies = p.trophies || [];
 
-  // ECONOMÍA
   const priceData = calculatePlayerPrice(p, stats, db.config.economy);
 
   let divId = p.divisionId;
@@ -186,6 +190,21 @@ function playerProfileView(p){
 
   const rankOf = (map) => map?.get(p.id) || '—';
   const totalRanked = rankings.total || 1;
+
+  // FIX: Lógica de Rachas y Badges
+  let streakBadge = '';
+  if (stats.winStreak >= 3) {
+    streakBadge = `<span class="badge badge-win" style="font-size:12px;padding:4px 10px;">🔥 RACHA POSITIVA (${stats.winStreak})</span>`;
+  } else if (stats.lossStreak >= db.config.badStreak.consecutiveLosses) {
+    streakBadge = `<span class="badge badge-loss" style="font-size:12px;padding:4px 10px;">📉 MALA RACHA (${stats.lossStreak})</span>`;
+  }
+
+  // FIX: Determinar si es agente libre
+  const isFreeAgent = p.status === 'free_agent' || !stats.teamId || stats.teamId === 'null';
+  const teamDisplay = isFreeAgent ? '<span style="color:var(--gold)">AGENTE LIBRE</span>' : esc(stats.teamName || 'Agente libre');
+  
+  // FIX: Trend
+  const trendSymbol = stats.pigTrend || '—';
 
   return `
     <div class="back-row">
@@ -202,12 +221,12 @@ function playerProfileView(p){
         <div class="player-hero-info">
           <div class="player-hero-name" style="color:${rankColor}">${esc(p.name)} ${flag}</div>
           <div class="player-hero-chips">
-            <span class="chip">${esc(stats.teamName || 'Agente libre')}</span>
+            <span class="chip">${teamDisplay}</span>
             ${div ? `<span class="chip division-indicator">📍 ${div.tier || '?'}ª · ${esc(div.name)}</span>` : ''}
             ${p.nationalityCode ? `<span class="chip">${flag} ${esc(nationName)}</span>` : ''}
             <span class="chip"><i class="${platformIcon(p.platform)}"></i> ${esc(p.platform || '—')}</span>
             <span class="chip" style="color:${rankColor};border-color:${rankColor}44">${esc(rankLine)}</span>
-            ${streak.label !== 'NEUTRA' ? `<span class="badge ${streak.cls}">${streak.label}</span>` : ''}
+            ${streakBadge}
           </div>
           ${p.rlTracker
             ? `<a href="${p.rlTracker}" target="_blank" class="player-tracker-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> RL TRACKER ↗</a>`
@@ -217,14 +236,14 @@ function playerProfileView(p){
           <div class="pig-label">ZENITH PIG</div>
           <div class="pig-value">
             ${(stats.pig || 0).toFixed(1)}
-            <span style="color:${trendColor[stats.pigTrend || '—']};font-size:22px;vertical-align:super">${stats.pigTrend || '—'}</span>
+            <span style="color:${trendColor[trendSymbol]};font-size:22px;vertical-align:super">${trendSymbol}</span>
           </div>
           <div style="font-size:10px;color:var(--muted)">Rank #${rankOf(rankings.pig)} de ${totalRanked}</div>
         </div>
       </div>
     </div>
 
-    <!-- NUEVO: CARD DE VALOR DE MERCADO -->
+    <!-- CARD DE VALOR DE MERCADO -->
     <div class="card" style="margin-top:18px;border-left:4px solid var(--gold)">
       <div class="card-header">
         <div class="card-title" style="color:var(--gold)"><span class="dot" style="color:var(--gold)">◆</span>VALOR DE MERCADO</div>

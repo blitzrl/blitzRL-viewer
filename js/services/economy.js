@@ -16,8 +16,14 @@ export function calculatePlayerPrice(player, stats, economy){
   const rank = player.rank || 'Bronze';
   const level = player.rankLevel || 1;
   
-  const rankTable = eco.basePriceByRank?.[rank] || {};
-  const basePrice = rankTable[level] ?? rankTable[1] ?? 0;
+  // FIX: Usar marketValue si existe
+  let basePrice = 0;
+  if (player.marketValue !== undefined && player.marketValue !== null) {
+    basePrice = player.marketValue;
+  } else {
+    const rankTable = eco.basePriceByRank?.[rank] || {};
+    basePrice = rankTable[level] ?? rankTable[1] ?? 0;
+  }
 
   const pig = stats?.pig ?? 0;
   const pigAdjustment = pig * (eco.pigMultiplier || 1000);
@@ -53,9 +59,6 @@ export function getTeamSquadValue(teamId) {
   return totalValue;
 }
 
-/**
- * Analiza las partidas de una serie para determinar el tipo de victoria.
- */
 export function detectVictoryType(games, format, winnerId, teamAId, teamBId, economy) {
   const db = getDB();
   const eco = economy || db?.config?.economy || ECONOMY_DEFAULTS;
@@ -86,16 +89,13 @@ export function detectVictoryType(games, format, winnerId, teamAId, teamBId, eco
 
   const avgGoalDiff = totalGoalDiff / winnerGamesWon;
 
-  // 1. Humillante
   if (shutouts >= thresholds.humiliatingShutout || avgGoalDiff >= thresholds.humiliatingGoalDiff) {
     return { type: 'humiliating', label: eco.bonuses.winHumiliating.label, amount: eco.bonuses.winHumiliating.amount, emoji: '😂' };
   }
   
-  // 2. Simple (Ganó sin perder ninguna partida)
   if (loserGamesWon === 0) {
     return { type: 'simple', label: eco.bonuses.winSimple.label, amount: eco.bonuses.winSimple.amount, emoji: '✅' };
   }
 
-  // 3. Complicada
   return { type: 'hard', label: eco.bonuses.winHard.label, amount: eco.bonuses.winHard.amount, emoji: '⚔️' };
 }

@@ -2,7 +2,7 @@
 // STORAGE — Solo lectura desde Supabase
 // ============================================================
 import { loadRemoteDB } from './supabase.js';
-import { getDefaultWidgets } from '../data/database.js';
+import { getDefaultWidgets, ECONOMY_DEFAULTS } from '../data/database.js';
 
 let _db = null;
 let _viewCache = null;
@@ -16,6 +16,8 @@ export async function loadDB() {
   if (!_db.widgets) _db.widgets = getDefaultWidgets();
   if (!_db.config) _db.config = {};
   if (!_db.config.theme) _db.config.theme = { active: null, presets: [] };
+  if (!_db.config.economy) _db.config.economy = JSON.parse(JSON.stringify(ECONOMY_DEFAULTS)); // NUEVO
+  if (!_db.economyLedger) _db.economyLedger = []; // NUEVO
   return _db;
 }
 
@@ -89,10 +91,11 @@ function migrateSnapshot(snapshot, liveDB) {
   s.history = s.history || [];
   s.trophyHistory = s.trophyHistory || [];
   s.trophies = s.trophies || {};
+  s.economyLedger = s.economyLedger || []; // NUEVO
   s.transferBannerBg = s.transferBannerBg || '';
   s.config = s.config || liveDB.config || {};
-  // ✅ El tema SIEMPRE es el activo (no se archiva con la temporada)
   s.config.theme = liveDB.config?.theme || s.config.theme;
+  s.config.economy = liveDB.config?.economy || ECONOMY_DEFAULTS; // NUEVO
   s.widgets = liveDB.widgets;
   s.archivedSeasons = liveDB.archivedSeasons;
   s.transferLog = liveDB.transferLog;

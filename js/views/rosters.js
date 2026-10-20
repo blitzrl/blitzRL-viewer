@@ -92,9 +92,14 @@ function teamProfileView(team){
     saves: a.saves + s.saves, shots: a.shots + s.shots, wins: a.wins + s.wins, losses: a.losses + s.losses
   }), { games: 0, goals: 0, assists: 0, saves: 0, shots: 0, wins: 0, losses: 0 });
 
+  // FIX: Proteger contra team.divisionId nulo
   const season = db.seasons.find(s => s.active) || db.seasons[0];
-  const standings = computeStandings(team.divisionId, season?.id);
-  const rank = standings.find(s => s.teamId === team.id)?.pos;
+  let rank = null;
+  if (team.divisionId && season) {
+    const standings = computeStandings(team.divisionId, season?.id);
+    rank = standings.find(s => s.teamId === team.id)?.pos;
+  }
+  
   const trophies = team.trophies || [];
   
   const squadValue = getTeamSquadValue(team.id);

@@ -180,7 +180,6 @@ function playerProfileView(p){
 
   const priceData = calculatePlayerPrice(p, stats, db.config.economy);
 
-  // FIX DEFINITIVO: Buscar equipo actual directamente en la DB, ignorando stats viejos
   const currentTeam = db.teams.find(t => (t.roster || []).some(r => r.playerId === p.id));
   const div = currentTeam ? db.divisions.find(d => d.id === currentTeam.divisionId) : null;
 
@@ -194,9 +193,7 @@ function playerProfileView(p){
     streakBadge = `<span class="badge badge-loss" style="font-size:12px;padding:4px 10px;">📉 MALA RACHA (${stats.lossStreak})</span>`;
   }
   
-  // FIX DEFINITIVO: Si no hay currentTeam, es Agente Libre.
   const teamDisplay = currentTeam ? esc(currentTeam.name) : '<span style="color:var(--gold)">AGENTE LIBRE</span>';
-  
   const trendSymbol = stats.pigTrend || '—';
 
   return `
@@ -236,7 +233,6 @@ function playerProfileView(p){
       </div>
     </div>
 
-    <!-- CARD DE VALOR DE MERCADO -->
     <div class="card" style="margin-top:18px;border-left:4px solid var(--gold)">
       <div class="card-header">
         <div class="card-title" style="color:var(--gold)"><span class="dot" style="color:var(--gold)">◆</span>VALOR DE MERCADO</div>
@@ -290,13 +286,15 @@ function playerProfileView(p){
 
     ${trophies.length > 0 ? `<div class="card" style="margin-top:18px">${renderVitrina(trophies)}</div>` : ''}
 
-    <!-- FIX: Historial de carrera ahora se llena desde transfers.js -->
     <div class="card" style="margin-top:18px">
       <div class="card-header"><div class="card-title"><span class="dot">◆</span>HISTORIAL DE CARRERA</div></div>
       ${(p.history && p.history.length) ? p.history.map(h => `
         <div class="history-row">
           <span style="color:var(--silver-light)">${esc(h.seasonName || '—')} · ${esc(h.divisionName || '—')}</span>
-          <span style="color:var(--muted);font-size:12px">${esc(h.teamName || '—')} · ${esc(h.role || '—')}</span>
+          <span style="color:var(--muted);font-size:12px">
+            ${h.fromTeamName ? `${esc(h.fromTeamName)} → ${esc(h.toTeamName)}` : esc(h.teamName || '—')}
+            · ${esc(h.role || '—')} ${h.price ? `($${h.price.toLocaleString()})` : ''}
+          </span>
         </div>`).join('')
       : '<div style="color:var(--muted);font-size:12px">Sin historial registrado todavía.</div>'}
     </div>

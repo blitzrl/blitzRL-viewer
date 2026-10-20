@@ -4,6 +4,7 @@
 import { getDB } from '../services/storage.js';
 import { state } from '../state.js';
 import { openMatchSummary } from './matchSummary.js';
+import { detectVictoryType } from '../services/economy.js';
 
 export function matchesView(){
   const db = getDB();
@@ -40,10 +41,19 @@ function matchRow(m){
   const B = db.teams.find(t => t.id === m.teamBId) || null;
   const sA = m.games.filter(g => g.scoreA > g.scoreB).length;
   const sB = m.games.filter(g => g.scoreB > g.scoreA).length;
+
+  let vType = null;
+  if (m.status === 'finished') {
+    let wId = m.winnerId;
+    if (!wId) wId = sA > sB ? m.teamAId : m.teamBId;
+    vType = detectVictoryType(m.games, m.format, wId, m.teamAId, m.teamBId, db.config.economy);
+  }
+
   const status = m.status === 'finished'
-    ? `<span class="badge badge-win">FINAL</span>`
+    ? `<span class="badge badge-win">FINAL ${vType ? vType.emoji : ''}</span>`
     : m.status === 'live' ? `<span class="badge badge-live">EN JUEGO</span>`
     : `<span class="badge">PENDIENTE</span>`;
+    
   const dateLine = (m.date || m.time)
     ? `<div class="match-meta-line">
          ${m.date ? `<i class="fa-solid fa-calendar"></i> ${m.date}` : ''}
@@ -52,7 +62,6 @@ function matchRow(m){
        </div>`
     : `<div class="match-meta-line"><span class="chip">${m.format || 'BO3'}</span> <span style="color:var(--muted);font-size:11px">sin fecha asignada</span></div>`;
 
-  // Clickeable cuando tiene partidas jugadas (live o finished)
   const hasGames = (m.games || []).length > 0;
   const clickable = hasGames;
   const summaryAttr = clickable ? `data-match-summary="${m.id}"` : '';

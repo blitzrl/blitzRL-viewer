@@ -40,6 +40,18 @@ export function calculatePIG(stats){
   return pig;
 }
 
+export function calculateTrend(player) {
+  const history = player?.pigHistory || [];
+  if (history.length < 2) return '—';
+  const recent = history.slice(-5);
+  const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
+  const current = history[history.length - 1];
+  
+  if (current > avgRecent + 0.5) return '▲';
+  if (current < avgRecent - 0.5) return '▼';
+  return '—';
+}
+
 export function efficiency(goals, shots){
   if(!shots) return 0;
   return +((goals / shots) * 100).toFixed(1);
@@ -52,18 +64,6 @@ export function streakLabel(stats){
   if(stats.winStreak >= 3) return { label: 'RACHA POSITIVA', cls: 'badge-win' };
   if(stats.lossStreak >= bs.consecutiveLosses) return { label: 'MALA RACHA', cls: 'badge-loss' };
   return { label: 'NEUTRA', cls: '' };
-}
-
-export function calculateTrend(player) {
-  const history = player.pigHistory || [];
-  if (history.length < 2) return '—';
-  const recent = history.slice(-5);
-  const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
-  const current = history[history.length - 1];
-  
-  if (current > avgRecent + 0.5) return '▲';
-  if (current < avgRecent - 0.5) return '▼';
-  return '—';
 }
 
 export function ballonDor(players, divisionId=null, seasonId=null){

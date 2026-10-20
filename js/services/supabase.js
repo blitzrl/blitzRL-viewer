@@ -81,6 +81,7 @@ export async function loadRemoteDB() {
     trophyHistory: [],
     trophies: config?.data?.data?.trophies || {},
     transferBannerBg: config?.data?.data?.transferBannerBg || '',
+    economyLedger: config?.data?.data?.economyLedger || [], // NUEVO
     viewSeasonId: null
   };
 

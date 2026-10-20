@@ -1,13 +1,10 @@
-// ============================================================
-// ROSTERS VIEW (EQUIPOS) — Solo lectura con vitrina de trofeos
-// ============================================================
 import { getDB } from '../services/storage.js';
 import { state } from '../state.js';
 import { aggregatePlayerStats } from '../services/statistics.js';
 import { getRankColor, getRankLabelResponsive } from '../data/nations.js';
 import { computeStandings } from '../services/standings.js';
 import { renderVitrina } from '../services/trophies.js';
-import { getTeamSquadValue } from '../services/economy.js'; // NUEVO
+import { getTeamSquadValue } from '../services/economy.js';
 
 export function rostersView(params = []){
   const db = getDB();
@@ -33,7 +30,6 @@ function teamCardMini(t){
   const db = getDB();
   const trophies = t.trophies || [];
   
-  // ECONOMÍA
   const squadValue = getTeamSquadValue(t.id);
   const balance = t.money || 0;
   const isDebt = balance < 0;
@@ -45,22 +41,18 @@ function teamCardMini(t){
           ${t.logo ? `<img src="${t.logo}" class="team-logo-img">` : '<span class="team-logo-fallback">◆</span>'}
         </div>
         <div style="min-width:0;flex:1">
-          <div class="team-name">${esc(t.name)}</div>
-          <div class="team-coach">Coach: ${esc(t.coach || '—')}</div>
-          
-          <!-- ECONOMÍA EN TARJETA -->
-          <div style="margin-top:8px;font-size:11px;line-height:1.5;background:var(--bg-elev);padding:6px 8px;border-radius:6px;border:1px solid var(--border-soft)">
-            <div style="color:var(--accent);display:flex;justify-content:space-between">
-              <span>Plantilla:</span> <b>$${squadValue.toLocaleString()}</b>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+            <div>
+              <div class="team-name">${esc(t.name)}</div>
+              <div class="team-coach">Coach: ${esc(t.coach || '—')}</div>
             </div>
-            ${isDebt 
-              ? `<div style="color:var(--danger);display:flex;justify-content:space-between;margin-top:2px">
-                   <span>Deuda:</span> <b>$${Math.abs(balance).toLocaleString()}</b>
-                 </div>`
-              : `<div style="color:var(--success);display:flex;justify-content:space-between;margin-top:2px">
-                   <span>Saldo:</span> <b>$${balance.toLocaleString()}</b>
-                 </div>`
-            }
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:10.5px;font-weight:600">
+              <span class="chip chip-accent" style="font-size:9.5px;padding:2px 6px">Plantilla: $${squadValue.toLocaleString()}</span>
+              ${isDebt 
+                ? `<span class="chip" style="font-size:9.5px;padding:2px 6px;color:var(--danger);border-color:rgba(226,92,92,.35)">Deuda: $${Math.abs(balance).toLocaleString()}</span>`
+                : `<span class="chip" style="font-size:9.5px;padding:2px 6px;color:var(--success);border-color:rgba(99,194,138,.35)">Saldo: $${balance.toLocaleString()}</span>`
+              }
+            </div>
           </div>
         </div>
       </div>
@@ -105,7 +97,6 @@ function teamProfileView(team){
   const rank = standings.find(s => s.teamId === team.id)?.pos;
   const trophies = team.trophies || [];
   
-  // ECONOMÍA
   const squadValue = getTeamSquadValue(team.id);
   const balance = team.money || 0;
   const isDebt = balance < 0;
@@ -136,7 +127,6 @@ function teamProfileView(team){
     </div>
 
     <div class="grid grid-3" style="margin-top:18px">
-      <!-- ROSTER -->
       <div class="card" style="grid-column: span 2">
         <div class="card-header"><div class="card-title"><span class="dot">◆</span>ROSTER</div></div>
         ${team.roster.map(r => {
@@ -166,11 +156,9 @@ function teamProfileView(team){
         }).join('')}
       </div>
 
-      <!-- RESUMEN Y ECONOMÍA -->
       <div class="card">
         <div class="card-header"><div class="card-title"><span class="dot">◆</span>FINANZAS Y STATS</div></div>
         
-        <!-- BLOQUE ECONÓMICO -->
         <div style="padding:14px;background:var(--bg-graphite);border:1px solid var(--border-soft);border-radius:8px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span style="font-size:11px;color:var(--muted);letter-spacing:.1em">VALOR PLANTILLA</span>
@@ -190,7 +178,6 @@ function teamProfileView(team){
           `}
         </div>
 
-        <!-- STATS -->
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
           <div class="kpi"><div class="kpi-val">${teamAgg.goals}</div><div class="kpi-lab">GOLES</div></div>
           <div class="kpi"><div class="kpi-val">${teamAgg.assists}</div><div class="kpi-lab">ASISTENCIAS</div></div>

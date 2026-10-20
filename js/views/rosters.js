@@ -20,7 +20,6 @@ export function rostersView(params = []){
 
   const teams = db.teams.filter(t => !state.divisionId || t.divisionId === state.divisionId);
   
-  // NUEVO: Calcular Agentes Libres
   const freeAgents = db.players.filter(p => !db.teams.some(t => (t.roster || []).some(r => r.playerId === p.id)));
 
   return `
@@ -33,16 +32,20 @@ export function rostersView(params = []){
       </div>
     </div>
 
-    <!-- NUEVA SECCIÓN: AGENTES LIBRES -->
+    <div class="grid grid-3" id="teamsGrid">
+      ${teams.map(t => teamCardMini(t)).join('') || '<div class="card">Sin equipos registrados.</div>'}
+    </div>
+
+    <!-- FIX: CUADRO DE AGENTES LIBRES MOVIDO ABAJO -->
     ${freeAgents.length > 0 ? `
-      <div class="card" style="margin-bottom:24px; border-left:3px solid var(--gold);" data-searchable="agentes libres ${freeAgents.map(p => p.name).join(' ').toLowerCase()}">
+      <div class="card" style="margin-top:24px; border-left:3px solid var(--gold);" data-searchable="agentes libres ${freeAgents.map(p => p.name).join(' ').toLowerCase()}">
         <div class="card-header">
           <div class="card-title" style="color:var(--gold)"><span class="dot" style="color:var(--gold)">◆</span>AGENTES LIBRES</div>
           <span class="card-sub">${freeAgents.length} jugadores</span>
         </div>
         <div class="grid grid-3" style="padding-top:10px;">
           ${freeAgents.map(p => `
-            <div class="card" style="padding:12px; background:var(--bg-graphite);">
+            <div class="card" style="padding:12px; background:var(--bg-graphite); cursor:pointer;" data-open-player="${p.id}">
               <div class="player-cell" style="margin-bottom:10px;">
                  ${p.profilePicture
                     ? `<img src="${p.profilePicture}" class="player-cell-avatar">`
@@ -57,10 +60,6 @@ export function rostersView(params = []){
         </div>
       </div>
     ` : ''}
-
-    <div class="grid grid-3" id="teamsGrid">
-      ${teams.map(t => teamCardMini(t)).join('') || '<div class="card">Sin equipos registrados.</div>'}
-    </div>
   `;
 }
 
@@ -242,6 +241,15 @@ function teamProfileView(team){
 export function bindRostersEvents(){
   document.querySelectorAll('[data-team-profile]').forEach(card =>
     card.addEventListener('click', () => { location.hash = '#/rosters/' + card.dataset.teamProfile; }));
+
+  // FIX: Hacer clickeables a los jugadores en las tarjetas de equipo y agentes libres
+  document.querySelectorAll('[data-open-player]').forEach(row => {
+    row.addEventListener('click', (e) => {
+      if(e.target.closest('button')) return; 
+      const pid = row.dataset.openPlayer;
+      if(pid) location.hash = '#/players/' + pid;
+    });
+  });
 
   // NUEVO: Buscador en tiempo real
   const searchInput = document.getElementById('teamSearchInput');

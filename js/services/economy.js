@@ -39,8 +39,6 @@ export function getTeamSquadValue(teamId) {
   const team = db.teams.find(t => t.id === teamId);
   if (!team) return 0;
 
-  // En el visualizador, aggregatePlayerStats() global puede ser pesado,
-  // así que pedimos solo los del equipo.
   const allStats = aggregatePlayerStats({ teamId });
   
   let totalValue = 0;
@@ -53,4 +51,51 @@ export function getTeamSquadValue(teamId) {
   });
 
   return totalValue;
+}
+
+/**
+ * Analiza las partidas de una serie para determinar el tipo de victoria.
+ */
+export function detectVictoryType(games, format, winnerId, teamAId, teamBId, economy) {
+  const db = getDB();
+  const eco = economy || db?.config?.economy || ECONOMY_DEFAULTS;
+  if (!eco || !eco.enabled || !games || games.length === 0) return null;
+
+  const winnerIsA = winnerId === teamAId;
+  const thresholds = eco.bonuses.thresholds?.[format || 'BO3'] || eco.bonuses.thresholds['BO3'];
+  
+  let winnerGamesWon = 0;
+  let loserGamesWon = 0;
+  let shutouts = 0;
+  let totalGoalDiff = 0;
+
+  games.forEach(g => {
+    const wScore = winnerIsA ? g.scoreA : g.scoreB;
+    const lScore = winnerIsA ? g.scoreB : g.scoreA;
+    
+    if (wScore > lScore) {
+      winnerGamesWon++;
+      totalGoalDiff += (wScore - lScore);
+      if (lScore === 0) shutouts++;
+    } else {
+      loserGamesWon++;
+    }
+  });
+
+  if (winnerGamesWon === 0) return null;
+
+  const avgGoalDiff = totalGoalDiff / winnerGamesWon;
+
+  // 1. Humillante
+  if (shutouts >= thresholds.humiliatingShutout || avgGoalDiff >= thresholds.humiliatingGoalDiff) {
+    return { type: 'humiliating', label: eco.bonuses.winHumiliating.label, amount: eco.bonuses.winHumiliating.amount, emoji: '😂' };
+  }
+  
+  // 2. Simple (Ganó sin perder ninguna partida)
+  if (loserGamesWon === 0) {
+    return { type: 'simple', label: eco.bonuses.winSimple.label, amount: eco.bonuses.winSimple.amount, emoji: '✅' };
+  }
+
+  // 3. Complicada
+  return { type: 'hard', label: eco.bonuses.winHard.label, amount: eco.bonuses.winHard.amount, emoji: '⚔️' };
 }

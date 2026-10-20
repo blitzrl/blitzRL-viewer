@@ -17,7 +17,8 @@ import { newsView, bindNewsEvents } from './views/news.js';
 import { playoffsView, bindPlayoffsEvents } from './views/playoffs.js';
 import { ballonDorView, bindBallonDorEvents } from './views/ballonDor.js';
 import { marketView, bindMarketEvents } from './views/market.js';
-import { performanceView, bindPerformanceEvents } from './views/performance.js'; // NUEVO
+import { performanceView, bindPerformanceEvents } from './views/performance.js';
+import { destroyAllCarousels } from './views/widgetCarousel.js'; // NUEVO
 
 window.addEventListener('error', e => console.error('[ZENITH] error:', e.error || e.message));
 window.addEventListener('unhandledrejection', e => console.error('[ZENITH] promise rejected:', e.reason));
@@ -57,7 +58,7 @@ async function boot() {
     registerRoute('playoffs',  playoffsView);
     registerRoute('players',   playersView);
     registerRoute('stats',     statsView);
-    registerRoute('performance', performanceView); // NUEVO
+    registerRoute('performance', performanceView); 
     registerRoute('ballonDor', ballonDorView);
     registerRoute('rosters',   rostersView);
     registerRoute('market',    marketView);
@@ -99,9 +100,24 @@ async function boot() {
 let _currentViewFn = null;
 let _currentParams = [];
 
+// FIX: Función para destruir componentes pesados antes de cambiar de vista
+function cleanupView() {
+  // 1. Destruir gráficas de Chart.js si existen
+  if (window._chartStatsInstance) { window._chartStatsInstance.destroy(); window._chartStatsInstance = null; }
+  if (window._chartEconomyInstance) { window._chartEconomyInstance.destroy(); window._chartEconomyInstance = null; }
+  
+  // 2. Destruir intervalos de carruseles
+  if (typeof destroyAllCarousels === 'function') {
+    destroyAllCarousels();
+  }
+}
+
 function renderView(viewFn, params) {
   const view = document.getElementById('view');
   try {
+    // FIX: Limpiar memoria antes de reescribir el HTML
+    cleanupView();
+
     view.innerHTML = viewFn(params);
     safeBind(bindDashboardEvents);
     safeBind(bindMatchesEvents);
@@ -112,7 +128,7 @@ function renderView(viewFn, params) {
     safeBind(bindPlayersEvents);
     safeBind(bindBallonDorEvents);
     safeBind(bindMarketEvents);
-    safeBind(bindPerformanceEvents); // NUEVO
+    safeBind(bindPerformanceEvents); 
     updateActiveNav();
     window.scrollTo(0, 0);
   } catch (err) {

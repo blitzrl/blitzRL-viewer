@@ -71,11 +71,12 @@ export function marketView(){
               <th class="col-mkt-player">JUGADOR</th>
               <th class="col-mkt-route">ORIGEN → DESTINO</th>
               <th class="num col-mkt-type">TIPO</th>
+              <th class="num col-mkt-price">PRECIO</th>
             </tr>
           </thead>
           <tbody>
             ${filtered.length === 0
-              ? '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Sin movimientos registrados</td></tr>'
+              ? '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Sin movimientos registrados</td></tr>'
               : filtered.map(m => marketRow(m)).join('')}
           </tbody>
         </table>
@@ -91,6 +92,9 @@ function marketRow(m){
   const toTeam = db.teams.find(t => t.id === m.toTeamId);
   const typeLabel = m.type === 'transfer' ? 'FICHAJE' : m.type === 'free' ? 'LIBRE' : 'PENDIENTE';
   const typeClass = m.type === 'transfer' ? 'transfer' : m.type === 'free' ? 'free' : 'pending';
+  
+  const priceVal = m.price;
+  const priceStr = priceVal !== undefined && priceVal !== null ? `$${priceVal.toLocaleString()}` : '—';
 
   return `
     <tr class="market-row-clickable" data-player-market="${m.playerId}" ${player.id ? '' : 'style="cursor:default"'}>
@@ -120,6 +124,9 @@ function marketRow(m){
       </td>
       <td class="num col-mkt-type">
         <span class="market-type-chip ${typeClass}">${typeLabel}</span>
+      </td>
+      <td class="num col-mkt-price" style="color:var(--gold);font-weight:600">
+        ${priceStr}
       </td>
     </tr>
   `;

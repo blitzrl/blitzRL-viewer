@@ -1,10 +1,14 @@
+// ============================================================
+// ROSTERS VIEW — Solo lectura (visualizador)
+// ============================================================
 import { getDB } from '../services/storage.js';
 import { state } from '../state.js';
 import { aggregatePlayerStats } from '../services/statistics.js';
-import { getRankColor, getRankLabelResponsive } from '../data/nations.js';
+import { getRankColor, getRankLabelResponsive, getNationFlag } from '../data/nations.js';
 import { computeStandings } from '../services/standings.js';
 import { renderVitrina } from '../services/trophies.js';
 import { getTeamSquadValue } from '../services/economy.js';
+import { openModal } from '../services/ui.js';
 
 let _searchQuery = '';
 
@@ -19,7 +23,6 @@ export function rostersView(params = []){
   }
 
   const teams = db.teams.filter(t => !state.divisionId || t.divisionId === state.divisionId);
-  
   const freeAgents = db.players.filter(p => !db.teams.some(t => (t.roster || []).some(r => r.playerId === p.id)));
 
   return `
@@ -36,7 +39,6 @@ export function rostersView(params = []){
       ${teams.map(t => teamCardMini(t)).join('') || '<div class="card">Sin equipos registrados.</div>'}
     </div>
 
-    <!-- FIX: CUADRO DE AGENTES LIBRES MOVIDO ABAJO -->
     ${freeAgents.length > 0 ? `
       <div class="card" style="margin-top:24px; border-left:3px solid var(--gold);" data-searchable="agentes libres ${freeAgents.map(p => p.name).join(' ').toLowerCase()}">
         <div class="card-header">
@@ -73,6 +75,9 @@ function teamCardMini(t){
 
   const searchable = `${t.name} ${t.coach} ${(t.roster||[]).map(r => db.players.find(x=>x.id===r.playerId)?.name || '').join(' ')}`.toLowerCase();
 
+  const coachObj = db.coaches?.find(c => c.teamId === t.id && c.roleType === 'coach');
+  const assistantObj = db.coaches?.find(c => c.teamId === t.id && c.roleType === 'assistant');
+
   return `
     <div class="card team-card" data-team-profile="${t.id}" data-searchable="${searchable}">
       <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">
@@ -83,7 +88,10 @@ function teamCardMini(t){
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
             <div>
               <div class="team-name">${esc(t.name)}</div>
-              <div class="team-coach">Coach: ${esc(t.coach || '—')}</div>
+              <div class="team-coach" style="margin-top:2px">
+                Coach: ${coachObj ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${coachObj.id}">${esc(t.coach||'—')}</span>` : esc(t.coach || '—')}
+              </div>
+              ${t.assistant ? `<div class="team-coach" style="margin-top:2px">Aux: ${assistantObj ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${assistantObj.id}">${esc(t.assistant)}</span>` : esc(t.assistant)}</div>` : ''}
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:10.5px;font-weight:600">
               <span class="chip chip-accent" style="font-size:9.5px;padding:2px 6px">Plantilla: $${squadValue.toLocaleString()}</span>
@@ -139,10 +147,12 @@ function teamProfileView(team){
   }
   
   const trophies = team.trophies || [];
-  
   const squadValue = getTeamSquadValue(team.id);
   const balance = team.money || 0;
   const isDebt = balance < 0;
+
+  const coachObj = db.coaches?.find(c => c.teamId === team.id && c.roleType === 'coach');
+  const assistantObj = db.coaches?.find(c => c.teamId === team.id && c.roleType === 'assistant');
 
   return `
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px">
@@ -159,7 +169,15 @@ function teamProfileView(team){
             ${rank ? `<span class="team-rank-inline">#${rank}</span>` : ''}
             ${esc(team.name)}
           </div>
-          <div class="team-coach" style="letter-spacing:.12em;margin-top:4px">COACH · ${esc(team.coach || '—')}</div>
+          
+          <div class="team-coach" style="letter-spacing:.12em;margin-top:4px">
+            COACH · ${coachObj ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${coachObj.id}">${esc(team.coach || '—')}</span>` : esc(team.coach || '—')}
+          </div>
+          ${team.assistant ? `
+          <div class="team-coach" style="letter-spacing:.12em;margin-top:2px; font-size:11px">
+            AUXILIAR · ${assistantObj ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${assistantObj.id}">${esc(team.assistant)}</span>` : esc(team.assistant)}
+          </div>` : ''}
+          
         </div>
         <div class="kpi-strip team-hero-kpis" style="grid-template-columns:repeat(3,1fr);min-width:340px">
           <div class="kpi"><div class="kpi-val">${teamAgg.games}</div><div class="kpi-lab">PARTIDAS</div></div>
@@ -238,11 +256,81 @@ function teamProfileView(team){
   `;
 }
 
+// ============================================================
+// MODAL DE PERFIL DE COACH (PÚBLICO)
+// ============================================================
+function showCoachProfile(coachId) {
+  const db = getDB();
+  const c = db.coaches?.find(x => x.id === coachId);
+  if (!c) return;
+
+  const team = db.teams.find(t => t.id === c.teamId);
+  const flag = c.nationalityCode ? getNationFlag(c.nationalityCode) : '';
+
+  const socialsList = [];
+  if (c.socials?.twitter) socialsList.push({ icon: 'fa-brands fa-twitter', url: c.socials.twitter, label: 'Twitter' });
+  if (c.socials?.twitch) socialsList.push({ icon: 'fa-brands fa-twitch', url: c.socials.twitch, label: 'Twitch' });
+  if (c.socials?.youtube) socialsList.push({ icon: 'fa-brands fa-youtube', url: c.socials.youtube, label: 'YouTube' });
+  if (c.socials?.instagram) socialsList.push({ icon: 'fa-brands fa-instagram', url: c.socials.instagram, label: 'Instagram' });
+  
+  if (c.socials?.discord) {
+    const isUrl = c.socials.discord.startsWith('http') || c.socials.discord.startsWith('discord.gg');
+    socialsList.push({ icon: 'fa-brands fa-discord', url: isUrl ? c.socials.discord : null, label: c.socials.discord, isUser: !isUrl });
+  }
+  
+  if (c.customLinks && c.customLinks.length > 0) {
+    c.customLinks.forEach(link => {
+      socialsList.push({ icon: link.icon, url: link.url, label: 'Enlace' });
+    });
+  }
+
+  openModal({
+    id: 'coach-profile-' + coachId,
+    title: 'PERFIL DE COACH',
+    body: `
+      <div style="display:flex; gap:20px; align-items:center; margin-bottom:20px">
+        <div class="team-logo-box-xl" style="border-radius:50%">
+          ${c.profilePicture ? `<img src="${c.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : '👤'}
+        </div>
+        <div>
+          <h2 style="font-family:var(--font-display); font-size:24px; color:var(--silver-light); margin:0;">${esc(c.name)} ${flag}</h2>
+          <div style="color:var(--accent); font-weight:600; margin-top:4px">${c.roleType === 'coach' ? 'Head Coach' : 'Asistente'}</div>
+          <div style="color:var(--muted); font-size:12px; margin-top:4px">${team ? esc(team.name) : 'Agente Libre'}</div>
+        </div>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="section-minihead">CONTACTO Y REDES</div>
+      <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+        ${c.rlTracker ? `<a href="${c.rlTracker}" target="_blank" class="btn btn-sm" style="color:var(--accent); border-color:var(--accent)">RL Tracker ↗</a>` : ''}
+        ${socialsList.map(s => {
+          if (s.isUser) {
+            return `<div class="btn btn-sm" style="color:#5865F2; border-color:#5865F2; cursor:default;"><i class="${s.icon}"></i> ${esc(s.label)}</div>`;
+          }
+          return `<a href="${s.url}" target="_blank" class="btn btn-sm"><i class="${s.icon}"></i> ${esc(s.label)}</a>`;
+        }).join('')}
+      </div>
+    `,
+    footer: `<button class="btn btn-ghost" data-close>CERRAR</button>`
+  });
+}
+
 export function bindRostersEvents(){
   document.querySelectorAll('[data-team-profile]').forEach(card =>
-    card.addEventListener('click', () => { location.hash = '#/rosters/' + card.dataset.teamProfile; }));
+    card.addEventListener('click', (e) => { 
+      if(e.target.closest('[data-show-coach]')) return; // Prevenir que abra el equipo si le dio al coach
+      location.hash = '#/rosters/' + card.dataset.teamProfile; 
+    }));
 
-  // FIX: Hacer clickeables a los jugadores en las tarjetas de equipo y agentes libres
+  // Listener para abrir el perfil del coach
+  document.querySelectorAll('[data-show-coach]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showCoachProfile(el.dataset.showCoach);
+    });
+  });
+
   document.querySelectorAll('[data-open-player]').forEach(row => {
     row.addEventListener('click', (e) => {
       if(e.target.closest('button')) return; 
@@ -251,7 +339,6 @@ export function bindRostersEvents(){
     });
   });
 
-  // NUEVO: Buscador en tiempo real
   const searchInput = document.getElementById('teamSearchInput');
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
@@ -260,9 +347,9 @@ export function bindRostersEvents(){
       cards.forEach(card => {
         const text = card.dataset.searchable;
         if (text.includes(_searchQuery)) {
-          card.style.display = ''; // Mostrar
+          card.style.display = ''; 
         } else {
-          card.style.display = 'none'; // Ocultar
+          card.style.display = 'none'; 
         }
       });
     });

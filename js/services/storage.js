@@ -1,5 +1,5 @@
 // ============================================================
-// STORAGE — Solo lectura desde Supabase
+// STORAGE — Solo lectura desde Supabase (Visualizador)
 // ============================================================
 import { loadRemoteDB } from './supabase.js';
 import { getDefaultWidgets, ECONOMY_DEFAULTS } from '../data/database.js';
@@ -16,8 +16,10 @@ export async function loadDB() {
   if (!_db.widgets) _db.widgets = getDefaultWidgets();
   if (!_db.config) _db.config = {};
   if (!_db.config.theme) _db.config.theme = { active: null, presets: [] };
-  if (!_db.config.economy) _db.config.economy = JSON.parse(JSON.stringify(ECONOMY_DEFAULTS)); // NUEVO
-  if (!_db.economyLedger) _db.economyLedger = []; // NUEVO
+  if (!_db.config.economy) _db.config.economy = JSON.parse(JSON.stringify(ECONOMY_DEFAULTS)); 
+  if (!_db.economyLedger) _db.economyLedger = []; 
+  if (!_db.contracts) _db.contracts = []; // <-- AÑADIDO
+  if (!_db.coaches) _db.coaches = []; // <-- AÑADIDO
   return _db;
 }
 
@@ -91,11 +93,14 @@ function migrateSnapshot(snapshot, liveDB) {
   s.history = s.history || [];
   s.trophyHistory = s.trophyHistory || [];
   s.trophies = s.trophies || {};
-  s.economyLedger = s.economyLedger || []; // NUEVO
+  s.economyLedger = s.economyLedger || []; 
+  s.contracts = s.contracts || []; // <-- AÑADIDO
+  s.coaches = s.coaches || []; // <-- AÑADIDO
   s.transferBannerBg = s.transferBannerBg || '';
   s.config = s.config || liveDB.config || {};
   s.config.theme = liveDB.config?.theme || s.config.theme;
-  s.config.economy = liveDB.config?.economy || ECONOMY_DEFAULTS; // NUEVO
+  s.config.economy = liveDB.config?.economy || ECONOMY_DEFAULTS; 
+  s.config.marketSettings = liveDB.config?.marketSettings || {}; // <-- AÑADIDO
   s.widgets = liveDB.widgets;
   s.archivedSeasons = liveDB.archivedSeasons;
   s.transferLog = liveDB.transferLog;

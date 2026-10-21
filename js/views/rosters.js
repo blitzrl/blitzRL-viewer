@@ -68,7 +68,6 @@ export function rostersView(params = []){
 function teamCardMini(t){
   const db = getDB();
   const trophies = t.trophies || [];
-  
   const squadValue = getTeamSquadValue(t.id);
   const balance = t.money || 0;
   const isDebt = balance < 0;
@@ -88,10 +87,20 @@ function teamCardMini(t){
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
             <div>
               <div class="team-name">${esc(t.name)}</div>
+              
+              <!-- AQUÍ ESTÁ EL CAMBIO CLAVE: USAMOS ONCLICK EN LUGAR DE EVENT LISTENERS -->
               <div class="team-coach" style="margin-top:2px">
-                Coach: ${coachObj ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${coachObj.id}">${esc(t.coach||'—')}</span>` : esc(t.coach || '—')}
+                Coach: ${coachObj 
+                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${coachObj.id}'); event.stopPropagation();">${esc(t.coach||'—')}</span>` 
+                  : esc(t.coach || '—')}
               </div>
-              ${t.assistant ? `<div class="team-coach" style="margin-top:2px">Aux: ${assistantObj ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${assistantObj.id}">${esc(t.assistant)}</span>` : esc(t.assistant)}</div>` : ''}
+              ${t.assistant ? `
+              <div class="team-coach" style="margin-top:2px">
+                Aux: ${assistantObj 
+                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${assistantObj.id}'); event.stopPropagation();">${esc(t.assistant)}</span>` 
+                  : esc(t.assistant)}
+              </div>` : ''}
+
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:10.5px;font-weight:600">
               <span class="chip chip-accent" style="font-size:9.5px;padding:2px 6px">Plantilla: $${squadValue.toLocaleString()}</span>
@@ -170,12 +179,17 @@ function teamProfileView(team){
             ${esc(team.name)}
           </div>
           
+          <!-- AQUÍ TAMBIÉN USAMOS ONCLICK -->
           <div class="team-coach" style="letter-spacing:.12em;margin-top:4px">
-            COACH · ${coachObj ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${coachObj.id}">${esc(team.coach || '—')}</span>` : esc(team.coach || '—')}
+            COACH · ${coachObj 
+              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${coachObj.id}'); event.stopPropagation();">${esc(team.coach || '—')}</span>` 
+              : esc(team.coach || '—')}
           </div>
           ${team.assistant ? `
           <div class="team-coach" style="letter-spacing:.12em;margin-top:2px; font-size:11px">
-            AUXILIAR · ${assistantObj ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${assistantObj.id}">${esc(team.assistant)}</span>` : esc(team.assistant)}
+            AUXILIAR · ${assistantObj 
+              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${assistantObj.id}'); event.stopPropagation();">${esc(team.assistant)}</span>` 
+              : esc(team.assistant)}
           </div>` : ''}
           
         </div>
@@ -316,20 +330,16 @@ function showCoachProfile(coachId) {
   });
 }
 
+// ESTA ES LA MAGIA QUE SOLUCIONA EL PROBLEMA DE LOS CLICS:
+// Exponemos la función para que el HTML pueda llamarla directamente.
+window.showCoachProfile = showCoachProfile;
+
 export function bindRostersEvents(){
   document.querySelectorAll('[data-team-profile]').forEach(card =>
     card.addEventListener('click', (e) => { 
-      if(e.target.closest('[data-show-coach]')) return; // Prevenir que abra el equipo si le dio al coach
+      if(e.target.closest('[data-show-coach]')) return; 
       location.hash = '#/rosters/' + card.dataset.teamProfile; 
     }));
-
-  // Listener para abrir el perfil del coach
-  document.querySelectorAll('[data-show-coach]').forEach(el => {
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showCoachProfile(el.dataset.showCoach);
-    });
-  });
 
   document.querySelectorAll('[data-open-player]').forEach(row => {
     row.addEventListener('click', (e) => {

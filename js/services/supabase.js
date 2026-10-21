@@ -1,5 +1,5 @@
 // ============================================================
-// SUPABASE SERVICE — Carga de datos + Realtime
+// SUPABASE SERVICE — Carga de datos + Realtime (Visualizador)
 // ============================================================
 
 let _client = null;
@@ -16,12 +16,10 @@ export function getSupabase() {
   return _client;
 }
 
-// Convierte snake_case → camelCase
 function camel(s) {
   return s.replace(/_([a-z])/g, (_, l) => l.toUpperCase());
 }
 
-// Fusiona columnas + data jsonb
 function mergeRow(row, columnMap = {}) {
   if (!row) return null;
   const result = {};
@@ -36,9 +34,6 @@ function mergeRow(row, columnMap = {}) {
   return result;
 }
 
-// ============================================================
-// CARGA PRINCIPAL
-// ============================================================
 export async function loadRemoteDB() {
   const sb = getSupabase();
 
@@ -54,7 +49,6 @@ export async function loadRemoteDB() {
     sb.from('archived_seasons').select('*')
   ]);
 
-  // Comprobar errores
   const errors = [seasons, divisions, teams, players, matches, playoffs, news, config, archived]
     .map(r => r.error)
     .filter(Boolean);
@@ -81,16 +75,15 @@ export async function loadRemoteDB() {
     trophyHistory: [],
     trophies: config?.data?.data?.trophies || {},
     transferBannerBg: config?.data?.data?.transferBannerBg || '',
-    economyLedger: config?.data?.data?.economyLedger || [], // NUEVO
+    economyLedger: config?.data?.data?.economyLedger || [],
+    contracts: config?.data?.data?.contracts || [], // <-- AÑADIDO
+    coaches: config?.data?.data?.coaches || [], // <-- AÑADIDO
     viewSeasonId: null
   };
 
   return db;
 }
 
-// ============================================================
-// REALTIME
-// ============================================================
 export function subscribeToChanges(onChange) {
   const sb = getSupabase();
   if (_realtimeChannel) sb.removeChannel(_realtimeChannel);

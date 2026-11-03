@@ -61,7 +61,37 @@ export async function loadRemoteDB() {
     seasons: (seasons.data || []).map(r => mergeRow(r)),
     divisions: (divisions.data || []).map(r => mergeRow(r)),
     teams: (teams.data || []).map(r => mergeRow(r)),
-    players: (players.data || []).map(r => mergeRow(r)),
+    players: (players.data || []).map(r => ({
+      id: r.id,
+      divisionId: r.division_id,
+      name: r.name,
+      platform: r.data?.platform || 'Steam',
+      nationalityCode: r.data?.nationalityCode || '',
+      rank: r.data?.rank || '',
+      rankLevel: r.data?.rankLevel ?? 2,
+      rankDivision: r.data?.rankDivision || 'II',
+      rlTracker: r.data?.rlTracker || '',
+      profilePicture: r.data?.profilePicture || '',
+      discordId: r.data?.discordId || '', // 🔥 NUEVO
+      socials: r.data?.socials || [],     // 🔥 NUEVO
+      history: r.data?.history || [],
+      sanctions: r.data?.sanctions || [],
+      pigHistory: r.data?.pigHistory || [],
+      pigTrend: r.data?.pigTrend || '—',
+      careerSnapshots: r.data?.careerSnapshots || [],
+      trophies: r.data?.trophies || [],
+      priceHistory: r.data?.priceHistory || [],
+      status: r.data?.status || 'owned',
+      pendingTeamId: r.data?.pendingTeamId || null,
+      marketValue: r.data?.marketValue || null,
+      onLoan: r.data?.onLoan || false,
+      ownerTeamId: r.data?.ownerTeamId || null,
+      contractId: r.data?.contractId || null,
+      seasonStats: r.data?.seasonStats || {
+        goals:0, assists:0, saves:0, shots:0, pig:0,
+        matchesPlayed:0, mvps:0, pigHistory:[], avgLast5PIG:0, avgPIGPerMatch:0
+      }
+    })),
     matches: (matches.data || []).map(r => mergeRow(r)),
     playoffs: (playoffs.data || []).map(r => mergeRow(r)),
     news: (news.data || []).map(r => mergeRow(r)),
@@ -76,8 +106,8 @@ export async function loadRemoteDB() {
     trophies: config?.data?.data?.trophies || {},
     transferBannerBg: config?.data?.data?.transferBannerBg || '',
     economyLedger: config?.data?.data?.economyLedger || [],
-    contracts: config?.data?.data?.contracts || [], // <-- AÑADIDO
-    coaches: config?.data?.data?.coaches || [], // <-- AÑADIDO
+    contracts: config?.data?.data?.contracts || [],
+    coaches: config?.data?.data?.coaches || [],
     viewSeasonId: null
   };
 

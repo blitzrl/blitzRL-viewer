@@ -72,8 +72,8 @@ export async function loadRemoteDB() {
       rankDivision: r.data?.rankDivision || 'II',
       rlTracker: r.data?.rlTracker || '',
       profilePicture: r.data?.profilePicture || '',
-      discordId: r.data?.discordId || '', // 🔥 NUEVO
-      socials: r.data?.socials || [],     // 🔥 NUEVO
+      discordId: r.data?.discordId || '',
+      socials: r.data?.socials || [],
       history: r.data?.history || [],
       sanctions: r.data?.sanctions || [],
       pigHistory: r.data?.pigHistory || [],
@@ -107,7 +107,21 @@ export async function loadRemoteDB() {
     transferBannerBg: config?.data?.data?.transferBannerBg || '',
     economyLedger: config?.data?.data?.economyLedger || [],
     contracts: config?.data?.data?.contracts || [],
-    coaches: config?.data?.data?.coaches || [],
+    coaches: (config?.data?.data?.coaches || []).map(c => ({
+      id: c.id,
+      name: c.name,
+      teamIds: c.teamIds || (c.teamId ? [c.teamId] : []),
+      profilePicture: c.profilePicture || '',
+      roleType: c.roleType || 'coach',
+      playerId: c.playerId || null,
+      nationalityCode: c.nationalityCode || '',
+      rlTracker: c.rlTracker || '',
+      discordId: c.discordId || '',
+      socials: c.socials || {},
+      customLinks: c.customLinks || [],
+      history: c.history || [],
+      trophies: c.trophies || []
+    })),
     viewSeasonId: null
   };
 

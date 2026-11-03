@@ -8,7 +8,7 @@ import { getRankColor, getRankLabelResponsive, getNationFlag } from '../data/nat
 import { computeStandings } from '../services/standings.js';
 import { renderVitrina } from '../services/trophies.js';
 import { getTeamSquadValue } from '../services/economy.js';
-import { openModal } from '../services/ui.js';
+import { openModal, toast } from '../services/ui.js';
 
 let _searchQuery = '';
 
@@ -74,8 +74,9 @@ function teamCardMini(t){
 
   const searchable = `${t.name} ${t.coach} ${(t.roster||[]).map(r => db.players.find(x=>x.id===r.playerId)?.name || '').join(' ')}`.toLowerCase();
 
-  const coachObj = db.coaches?.find(c => c.teamId === t.id && c.roleType === 'coach');
-  const assistantObj = db.coaches?.find(c => c.teamId === t.id && c.roleType === 'assistant');
+  // 🔥 BÚSQUEDA CON teamIds
+  const coachObj = db.coaches?.find(c => c.roleType === 'coach' && (c.teamIds || []).includes(t.id));
+  const assistantObj = db.coaches?.find(c => c.roleType === 'assistant' && (c.teamIds || []).includes(t.id));
 
   return `
     <div class="card team-card" data-team-profile="${t.id}" data-searchable="${searchable}">
@@ -88,7 +89,6 @@ function teamCardMini(t){
             <div>
               <div class="team-name">${esc(t.name)}</div>
               
-              <!-- AQUÍ ESTÁ EL CAMBIO CLAVE: USAMOS ONCLICK EN LUGAR DE EVENT LISTENERS -->
               <div class="team-coach" style="margin-top:2px">
                 Coach: ${coachObj 
                   ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${coachObj.id}'); event.stopPropagation();">${esc(t.coach||'—')}</span>` 
@@ -160,8 +160,9 @@ function teamProfileView(team){
   const balance = team.money || 0;
   const isDebt = balance < 0;
 
-  const coachObj = db.coaches?.find(c => c.teamId === team.id && c.roleType === 'coach');
-  const assistantObj = db.coaches?.find(c => c.teamId === team.id && c.roleType === 'assistant');
+  // 🔥 BÚSQUEDA CON teamIds
+  const coachObj = db.coaches?.find(c => c.roleType === 'coach' && (c.teamIds || []).includes(team.id));
+  const assistantObj = db.coaches?.find(c => c.roleType === 'assistant' && (c.teamIds || []).includes(team.id));
 
   return `
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px">
@@ -179,7 +180,6 @@ function teamProfileView(team){
             ${esc(team.name)}
           </div>
           
-          <!-- AQUÍ TAMBIÉN USAMOS ONCLICK -->
           <div class="team-coach" style="letter-spacing:.12em;margin-top:4px">
             COACH · ${coachObj 
               ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${coachObj.id}'); event.stopPropagation();">${esc(team.coach || '—')}</span>` 
@@ -278,7 +278,7 @@ function showCoachProfile(coachId) {
   const c = db.coaches?.find(x => x.id === coachId);
   if (!c) return;
 
-  const team = db.teams.find(t => t.id === c.teamId);
+  const teamNames = (c.teamIds || []).map(id => db.teams.find(t => t.id === id)?.name).filter(Boolean).join(', ') || 'Agente Libre';
   const flag = c.nationalityCode ? getNationFlag(c.nationalityCode) : '';
 
   const socialsList = [];
@@ -294,7 +294,7 @@ function showCoachProfile(coachId) {
   
   if (c.customLinks && c.customLinks.length > 0) {
     c.customLinks.forEach(link => {
-      socialsList.push({ icon: link.icon, url: link.url, label: 'Enlace' });
+      socialsList.push({ icon: link.icon || 'fa-solid fa-link', url: link.url, label: 'Enlace' });
     });
   }
 
@@ -309,15 +309,23 @@ function showCoachProfile(coachId) {
         <div>
           <h2 style="font-family:var(--font-display); font-size:24px; color:var(--silver-light); margin:0;">${esc(c.name)} ${flag}</h2>
           <div style="color:var(--accent); font-weight:600; margin-top:4px">${c.roleType === 'coach' ? 'Head Coach' : 'Asistente'}</div>
-          <div style="color:var(--muted); font-size:12px; margin-top:4px">${team ? esc(team.name) : 'Agente Libre'}</div>
+          <div style="color:var(--muted); font-size:12px; margin-top:4px">${teamNames}</div>
         </div>
       </div>
       
       <div class="divider"></div>
       
       <div class="section-minihead">CONTACTO Y REDES</div>
+      
       <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
         ${c.rlTracker ? `<a href="${c.rlTracker}" target="_blank" class="btn btn-sm" style="color:var(--accent); border-color:var(--accent)">RL Tracker ↗</a>` : ''}
+        
+        ${c.discordId ? `
+          <button class="btn btn-sm" id="copyCoachDiscordBtn" data-id="${c.discordId}" style="cursor:pointer; border-color:rgba(88, 101, 242, 0.4); color:#5865F2; background:rgba(88, 101, 242, 0.1); display:flex; gap:6px; align-items:center;" title="Copiar ID de Discord">
+            <i class="fa-brands fa-discord"></i> ${c.discordId} <i class="fa-regular fa-copy" style="margin-left:4px; opacity:0.7;"></i>
+          </button>
+        ` : ''}
+
         ${socialsList.map(s => {
           if (s.isUser) {
             return `<div class="btn btn-sm" style="color:#5865F2; border-color:#5865F2; cursor:default;"><i class="${s.icon}"></i> ${esc(s.label)}</div>`;
@@ -326,12 +334,22 @@ function showCoachProfile(coachId) {
         }).join('')}
       </div>
     `,
-    footer: `<button class="btn btn-ghost" data-close>CERRAR</button>`
+    footer: `<button class="btn btn-ghost" data-close>CERRAR</button>`,
+    onMount: (root) => {
+      root.querySelector('#copyCoachDiscordBtn')?.addEventListener('click', (e) => {
+        const discordId = e.currentTarget.dataset.id;
+        if (!discordId) return;
+        navigator.clipboard.writeText(discordId).then(() => {
+          toast('✅ ID de Discord copiado', 'success');
+        }).catch(err => {
+          console.error('Error al copiar:', err);
+          toast('No se pudo copiar el ID', 'error');
+        });
+      });
+    }
   });
 }
 
-// ESTA ES LA MAGIA QUE SOLUCIONA EL PROBLEMA DE LOS CLICS:
-// Exponemos la función para que el HTML pueda llamarla directamente.
 window.showCoachProfile = showCoachProfile;
 
 export function bindRostersEvents(){

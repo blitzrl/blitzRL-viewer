@@ -111,6 +111,7 @@ export async function loadRemoteDB() {
       id: c.id,
       name: c.name,
       teamIds: c.teamIds || (c.teamId ? [c.teamId] : []),
+      orgName: c.orgName || '', // 🔥 NUEVO: carga orgName en el Viewer
       profilePicture: c.profilePicture || '',
       roleType: c.roleType || 'coach',
       playerId: c.playerId || null,

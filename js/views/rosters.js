@@ -74,9 +74,17 @@ function teamCardMini(t){
 
   const searchable = `${t.name} ${t.coach} ${(t.roster||[]).map(r => db.players.find(x=>x.id===r.playerId)?.name || '').join(' ')}`.toLowerCase();
 
-  // 🔥 BÚSQUEDA CON teamIds
   const coachObj = db.coaches?.find(c => c.roleType === 'coach' && (c.teamIds || []).includes(t.id));
   const assistantObj = db.coaches?.find(c => c.roleType === 'assistant' && (c.teamIds || []).includes(t.id));
+
+  // 🔥 NUEVO: Badge de grupo para el mini card
+  const coachOrgBadge = coachObj?.orgName && (coachObj.teamIds || []).length > 1 
+    ? `<span class="chip chip-gold" style="font-size:9px; padding:1px 5px; margin-left:4px;">👥 ${esc(coachObj.orgName)}</span>` 
+    : '';
+
+  const assistantOrgBadge = assistantObj?.orgName && (assistantObj.teamIds || []).length > 1 
+    ? `<span class="chip chip-gold" style="font-size:9px; padding:1px 5px; margin-left:4px;">👥 ${esc(assistantObj.orgName)}</span>` 
+    : '';
 
   return `
     <div class="card team-card" data-team-profile="${t.id}" data-searchable="${searchable}">
@@ -89,16 +97,18 @@ function teamCardMini(t){
             <div>
               <div class="team-name">${esc(t.name)}</div>
               
-              <div class="team-coach" style="margin-top:2px">
+              <div class="team-coach" style="margin-top:2px; display:flex; flex-wrap:wrap; align-items:center; gap:4px;">
                 Coach: ${coachObj 
-                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${coachObj.id}'); event.stopPropagation();">${esc(t.coach||'—')}</span>` 
+                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${coachObj.id}" onclick="event.stopPropagation();">${esc(t.coach||'—')}</span>` 
                   : esc(t.coach || '—')}
+                ${coachOrgBadge}
               </div>
               ${t.assistant ? `
-              <div class="team-coach" style="margin-top:2px">
+              <div class="team-coach" style="margin-top:2px; display:flex; flex-wrap:wrap; align-items:center; gap:4px;">
                 Aux: ${assistantObj 
-                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${assistantObj.id}'); event.stopPropagation();">${esc(t.assistant)}</span>` 
+                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${assistantObj.id}" onclick="event.stopPropagation();">${esc(t.assistant)}</span>` 
                   : esc(t.assistant)}
+                ${assistantOrgBadge}
               </div>` : ''}
 
             </div>
@@ -160,9 +170,16 @@ function teamProfileView(team){
   const balance = team.money || 0;
   const isDebt = balance < 0;
 
-  // 🔥 BÚSQUEDA CON teamIds
   const coachObj = db.coaches?.find(c => c.roleType === 'coach' && (c.teamIds || []).includes(team.id));
   const assistantObj = db.coaches?.find(c => c.roleType === 'assistant' && (c.teamIds || []).includes(team.id));
+
+  const coachOrgBadge = coachObj?.orgName && (coachObj.teamIds || []).length > 1 
+    ? `<span class="chip chip-gold" style="font-size:10px; padding:2px 8px; margin-left:8px; vertical-align:middle;">👥 ${esc(coachObj.orgName)}</span>` 
+    : '';
+
+  const assistantOrgBadge = assistantObj?.orgName && (assistantObj.teamIds || []).length > 1 
+    ? `<span class="chip chip-gold" style="font-size:9px; padding:1px 6px; margin-left:8px; vertical-align:middle;">👥 ${esc(assistantObj.orgName)}</span>` 
+    : '';
 
   return `
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px">
@@ -182,14 +199,16 @@ function teamProfileView(team){
           
           <div class="team-coach" style="letter-spacing:.12em;margin-top:4px">
             COACH · ${coachObj 
-              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${coachObj.id}'); event.stopPropagation();">${esc(team.coach || '—')}</span>` 
+              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${coachObj.id}" onclick="event.stopPropagation();">${esc(team.coach || '—')}</span>` 
               : esc(team.coach || '—')}
+            ${coachOrgBadge}
           </div>
           ${team.assistant ? `
           <div class="team-coach" style="letter-spacing:.12em;margin-top:2px; font-size:11px">
             AUXILIAR · ${assistantObj 
-              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${assistantObj.id}'); event.stopPropagation();">${esc(team.assistant)}</span>` 
+              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${assistantObj.id}" onclick="event.stopPropagation();">${esc(team.assistant)}</span>` 
               : esc(team.assistant)}
+            ${assistantOrgBadge}
           </div>` : ''}
           
         </div>
@@ -270,9 +289,6 @@ function teamProfileView(team){
   `;
 }
 
-// ============================================================
-// MODAL DE PERFIL DE COACH (PÚBLICO)
-// ============================================================
 function showCoachProfile(coachId) {
   const db = getDB();
   const c = db.coaches?.find(x => x.id === coachId);
@@ -280,6 +296,7 @@ function showCoachProfile(coachId) {
 
   const teamNames = (c.teamIds || []).map(id => db.teams.find(t => t.id === id)?.name).filter(Boolean).join(', ') || 'Agente Libre';
   const flag = c.nationalityCode ? getNationFlag(c.nationalityCode) : '';
+  const hasGroup = c.orgName && (c.teamIds || []).length > 1;
 
   const socialsList = [];
   if (c.socials?.twitter) socialsList.push({ icon: 'fa-brands fa-twitter', url: c.socials.twitter, label: 'Twitter' });
@@ -302,14 +319,15 @@ function showCoachProfile(coachId) {
     id: 'coach-profile-' + coachId,
     title: 'PERFIL DE COACH',
     body: `
-      <div style="display:flex; gap:20px; align-items:center; margin-bottom:20px">
+      <div style="display:flex; gap:20px; align-items:center; margin-bottom:20px; flex-wrap:wrap;">
         <div class="team-logo-box-xl" style="border-radius:50%">
           ${c.profilePicture ? `<img src="${c.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : '👤'}
         </div>
-        <div>
-          <h2 style="font-family:var(--font-display); font-size:24px; color:var(--silver-light); margin:0;">${esc(c.name)} ${flag}</h2>
+        <div style="min-width:0; flex:1;">
+          <h2 style="font-family:var(--font-display); font-size:24px; color:var(--silver-light); margin:0; word-break:break-word;">${esc(c.name)} ${flag}</h2>
           <div style="color:var(--accent); font-weight:600; margin-top:4px">${c.roleType === 'coach' ? 'Head Coach' : 'Asistente'}</div>
-          <div style="color:var(--muted); font-size:12px; margin-top:4px">${teamNames}</div>
+          ${hasGroup ? `<div style="color:var(--gold); font-size:13px; margin-top:6px; font-weight:600; word-break:break-word;">👥 ${esc(c.orgName)}</div>` : ''}
+          <div style="color:var(--muted); font-size:12px; margin-top:4px; word-break:break-word;">${teamNames}</div>
         </div>
       </div>
       
@@ -321,8 +339,8 @@ function showCoachProfile(coachId) {
         ${c.rlTracker ? `<a href="${c.rlTracker}" target="_blank" class="btn btn-sm" style="color:var(--accent); border-color:var(--accent)">RL Tracker ↗</a>` : ''}
         
         ${c.discordId ? `
-          <button class="btn btn-sm" id="copyCoachDiscordBtn" data-id="${c.discordId}" style="cursor:pointer; border-color:rgba(88, 101, 242, 0.4); color:#5865F2; background:rgba(88, 101, 242, 0.1); display:flex; gap:6px; align-items:center;" title="Copiar ID de Discord">
-            <i class="fa-brands fa-discord"></i> ${c.discordId} <i class="fa-regular fa-copy" style="margin-left:4px; opacity:0.7;"></i>
+          <button class="btn btn-sm" id="copyCoachDiscordBtn" data-id="${c.discordId}" style="cursor:pointer; border-color:rgba(88, 101, 242, 0.4); color:#5865F2; background:rgba(88, 101, 242, 0.1); display:flex; gap:6px; align-items:center; max-width:100%;" title="Copiar ID de Discord">
+            <i class="fa-brands fa-discord"></i> <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c.discordId)}</span> <i class="fa-regular fa-copy" style="margin-left:4px; opacity:0.7;"></i>
           </button>
         ` : ''}
 
@@ -358,6 +376,13 @@ export function bindRostersEvents(){
       if(e.target.closest('[data-show-coach]')) return; 
       location.hash = '#/rosters/' + card.dataset.teamProfile; 
     }));
+
+  document.querySelectorAll('[data-show-coach]').forEach(el => {
+    el.addEventListener('click', (e) => { 
+      e.stopPropagation(); 
+      showCoachProfile(el.dataset.showCoach); 
+    });
+  });
 
   document.querySelectorAll('[data-open-player]').forEach(row => {
     row.addEventListener('click', (e) => {

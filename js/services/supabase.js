@@ -37,7 +37,8 @@ function mergeRow(row, columnMap = {}) {
 export async function loadRemoteDB() {
   const sb = getSupabase();
 
-  const [seasons, divisions, teams, players, matches, playoffs, news, config, archived] = await Promise.all([
+  // 🔥 FASE 1: Agregamos la tabla 'coaches' a la descarga
+  const [seasons, divisions, teams, players, matches, playoffs, news, config, archived, coachesRes] = await Promise.all([
     sb.from('seasons').select('*'),
     sb.from('divisions').select('*'),
     sb.from('teams').select('*'),
@@ -46,10 +47,11 @@ export async function loadRemoteDB() {
     sb.from('playoffs').select('*'),
     sb.from('news').select('*'),
     sb.from('config').select('*').maybeSingle(),
-    sb.from('archived_seasons').select('*')
+    sb.from('archived_seasons').select('*'),
+    sb.from('coaches').select('*') // 🔥 NUEVO: Leemos de la tabla correcta
   ]);
 
-  const errors = [seasons, divisions, teams, players, matches, playoffs, news, config, archived]
+  const errors = [seasons, divisions, teams, players, matches, playoffs, news, config, archived, coachesRes]
     .map(r => r.error)
     .filter(Boolean);
   if (errors.length) {
@@ -107,22 +109,27 @@ export async function loadRemoteDB() {
     transferBannerBg: config?.data?.data?.transferBannerBg || '',
     economyLedger: config?.data?.data?.economyLedger || [],
     contracts: config?.data?.data?.contracts || [],
-    coaches: (config?.data?.data?.coaches || []).map(c => ({
-      id: c.id,
-      name: c.name,
-      teamIds: c.teamIds || (c.teamId ? [c.teamId] : []),
-      orgName: c.orgName || '', // 🔥 NUEVO: carga orgName en el Viewer
-      profilePicture: c.profilePicture || '',
-      roleType: c.roleType || 'coach',
-      playerId: c.playerId || null,
-      nationalityCode: c.nationalityCode || '',
-      rlTracker: c.rlTracker || '',
-      discordId: c.discordId || '',
-      socials: c.socials || {},
-      customLinks: c.customLinks || [],
-      history: c.history || [],
-      trophies: c.trophies || []
-    })),
+    
+    // 🔥 FASE 1: Mapeo correcto de coaches desde la tabla
+    coaches: (coachesRes.data || []).map(r => {
+      const data = r.data || {};
+      return {
+        id: r.id,
+        name: r.name,
+        teamIds: data.teamIds || (r.team_id ? [r.team_id] : []),
+        orgName: data.orgName || '',
+        profilePicture: data.profilePicture || '',
+        roleType: data.roleType || 'coach',
+        playerId: data.playerId || null,
+        nationalityCode: data.nationalityCode || '',
+        rlTracker: data.rlTracker || '',
+        discordId: data.discordId || '',
+        socials: data.socials || {},
+        customLinks: data.customLinks || [],
+        history: data.history || [],
+        trophies: data.trophies || []
+      };
+    }),
     viewSeasonId: null
   };
 
@@ -149,6 +156,7 @@ export function subscribeToChanges(onChange) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, trigger)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'config' }, trigger)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'archived_seasons' }, trigger)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'coaches' }, trigger) // 🔥 Agregado Realtime para coaches
     .subscribe((status) => {
       console.log('[SUPABASE] Realtime status:', status);
     });

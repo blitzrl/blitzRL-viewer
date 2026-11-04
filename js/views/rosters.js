@@ -77,7 +77,6 @@ function teamCardMini(t){
   const coachObj = db.coaches?.find(c => c.roleType === 'coach' && (c.teamIds || []).includes(t.id));
   const assistantObj = db.coaches?.find(c => c.roleType === 'assistant' && (c.teamIds || []).includes(t.id));
 
-  // 🔥 NUEVO: Badge de grupo para el mini card
   const coachOrgBadge = coachObj?.orgName && (coachObj.teamIds || []).length > 1 
     ? `<span class="chip chip-gold" style="font-size:9px; padding:1px 5px; margin-left:4px;">👥 ${esc(coachObj.orgName)}</span>` 
     : '';
@@ -99,14 +98,14 @@ function teamCardMini(t){
               
               <div class="team-coach" style="margin-top:2px; display:flex; flex-wrap:wrap; align-items:center; gap:4px;">
                 Coach: ${coachObj 
-                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${coachObj.id}" onclick="event.stopPropagation();">${esc(t.coach||'—')}</span>` 
+                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${coachObj.id}'); event.stopPropagation();">${esc(t.coach||'—')}</span>` 
                   : esc(t.coach || '—')}
                 ${coachOrgBadge}
               </div>
               ${t.assistant ? `
               <div class="team-coach" style="margin-top:2px; display:flex; flex-wrap:wrap; align-items:center; gap:4px;">
                 Aux: ${assistantObj 
-                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${assistantObj.id}" onclick="event.stopPropagation();">${esc(t.assistant)}</span>` 
+                  ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${assistantObj.id}'); event.stopPropagation();">${esc(t.assistant)}</span>` 
                   : esc(t.assistant)}
                 ${assistantOrgBadge}
               </div>` : ''}
@@ -199,14 +198,14 @@ function teamProfileView(team){
           
           <div class="team-coach" style="letter-spacing:.12em;margin-top:4px">
             COACH · ${coachObj 
-              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${coachObj.id}" onclick="event.stopPropagation();">${esc(team.coach || '—')}</span>` 
+              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${coachObj.id}'); event.stopPropagation();">${esc(team.coach || '—')}</span>` 
               : esc(team.coach || '—')}
             ${coachOrgBadge}
           </div>
           ${team.assistant ? `
           <div class="team-coach" style="letter-spacing:.12em;margin-top:2px; font-size:11px">
             AUXILIAR · ${assistantObj 
-              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" data-show-coach="${assistantObj.id}" onclick="event.stopPropagation();">${esc(team.assistant)}</span>` 
+              ? `<span style="color:var(--accent); cursor:pointer; text-decoration:underline;" onclick="window.showCoachProfile('${assistantObj.id}'); event.stopPropagation();">${esc(team.assistant)}</span>` 
               : esc(team.assistant)}
             ${assistantOrgBadge}
           </div>` : ''}
@@ -289,6 +288,9 @@ function teamProfileView(team){
   `;
 }
 
+// ============================================================
+// MODAL DE PERFIL DE COACH (PÚBLICO)
+// ============================================================
 function showCoachProfile(coachId) {
   const db = getDB();
   const c = db.coaches?.find(x => x.id === coachId);
@@ -373,16 +375,10 @@ window.showCoachProfile = showCoachProfile;
 export function bindRostersEvents(){
   document.querySelectorAll('[data-team-profile]').forEach(card =>
     card.addEventListener('click', (e) => { 
-      if(e.target.closest('[data-show-coach]')) return; 
+      // Si el clic fue en un nombre de coach, no abrir la tarjeta del equipo
+      if(e.target.closest('[data-show-coach]') || e.target.closest('span[onclick*="showCoachProfile"]')) return; 
       location.hash = '#/rosters/' + card.dataset.teamProfile; 
     }));
-
-  document.querySelectorAll('[data-show-coach]').forEach(el => {
-    el.addEventListener('click', (e) => { 
-      e.stopPropagation(); 
-      showCoachProfile(el.dataset.showCoach); 
-    });
-  });
 
   document.querySelectorAll('[data-open-player]').forEach(row => {
     row.addEventListener('click', (e) => {

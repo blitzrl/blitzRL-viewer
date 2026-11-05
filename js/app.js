@@ -1,5 +1,5 @@
 // ============================================================
-// ZENITH VIEWER — Bootstrap + Sistema de Impresión
+// ZENITH VIEWER — Bootstrap + Sistema de Impresión Premium
 // ============================================================
 import { loadDB, reloadDB, getDB, setViewSeasonId } from './services/storage.js';
 import { subscribeToChanges } from './services/supabase.js';
@@ -7,9 +7,9 @@ import { registerRoute, startRouter, navigate } from './router.js';
 import { initEmoji } from './services/emoji.js';
 import { state, loadActiveDivision, saveActiveDivision } from './state.js';
 import { applyTheme } from './services/theme.js';
-import { openModal, closeTopModal, toast } from './services/ui.js'; // 🔥 Importamos UI
+import { openModal, closeTopModal, toast } from './services/ui.js';
 
-// Importamos las vistas
+// Vistas
 import { dashboardView, bindDashboardEvents } from './views/dashboard.js';
 import { matchesView, bindMatchesEvents } from './views/matches.js';
 import { statsView, bindStatsEvents } from './views/stats.js';
@@ -24,23 +24,18 @@ import { destroyAllCarousels } from './views/widgetCarousel.js';
 
 // Utilidades
 import { computeStandings } from './services/standings.js';
-import { getFormatForRound, getPlayoff } from './services/playoffs.js';
 
 window.addEventListener('error', e => console.error('[ZENITH] error:', e.error || e.message));
 window.addEventListener('unhandledrejection', e => console.error('[ZENITH] promise rejected:', e.reason));
 
-// ---------- TEMA ----------
 function safeApplyTheme(){
   try {
     const db = getDB();
     const themeActive = db?.config?.theme?.active;
     applyTheme(themeActive);
-  } catch(err) {
-    console.warn('[ZENITH] No se pudo aplicar el tema:', err);
-  }
+  } catch(err) {}
 }
 
-// ---------- BOOT ----------
 async function boot() {
   try {
     await loadDB();
@@ -56,7 +51,6 @@ async function boot() {
 
     updateHeaderLabels();
 
-    // Rutas
     registerRoute('dashboard', dashboardView);
     registerRoute('matches',   matchesView);
     registerRoute('playoffs',  playoffsView);
@@ -77,7 +71,6 @@ async function boot() {
     setupHeaderEvents();
     setupMobileSidebar();
 
-    // Realtime
     subscribeToChanges(async () => {
       await reloadDB();
       safeApplyTheme();
@@ -86,21 +79,12 @@ async function boot() {
     });
 
     initEmoji();
-
   } catch (err) {
     console.error('[ZENITH] Boot error:', err);
-    document.getElementById('view').innerHTML = `
-      <div class="card" style="border-left:3px solid var(--danger); max-width: 700px; margin: 40px auto;">
-        <div class="card-title" style="color:var(--danger)">◆ ERROR DE CARGA</div>
-        <div style="margin-top:12px;font-size:13px;color:var(--silver)">
-          No se pudieron cargar los datos desde Supabase. Revisa tu conexión y la configuración.
-        </div>
-        <pre style="margin-top:12px;font-size:11px;color:var(--muted);white-space:pre-wrap;overflow:auto;max-height:300px">${(err.stack || err.message || '').replace(/</g,'&lt;')}</pre>
-      </div>`;
+    document.getElementById('view').innerHTML = `<div class="card" style="border-left:3px solid var(--danger)"><div class="card-title" style="color:var(--danger)">ERROR DE CARGA</div><div>${err.message}</div></div>`;
   }
 }
 
-// ---------- RENDER ----------
 let _currentViewFn = null;
 let _currentParams = [];
 
@@ -115,31 +99,24 @@ function renderView(viewFn, params) {
   try {
     cleanupView();
     view.innerHTML = viewFn(params);
-    
-    // Binds
     safeBind(bindDashboardEvents); safeBind(bindMatchesEvents); safeBind(bindStatsEvents);
     safeBind(bindNewsEvents); safeBind(bindPlayoffsEvents); safeBind(bindRostersEvents);
     safeBind(bindPlayersEvents); safeBind(bindBallonDorEvents); safeBind(bindMarketEvents);
     safeBind(bindPerformanceEvents); 
     
-    // 🔥 INYECTAR BOTÓN DE IMPRESIÓN
     injectPrintButton();
-
     updateActiveNav();
     window.scrollTo(0, 0);
   } catch (err) {
-    console.error('[ZENITH] Render error:', err);
-    view.innerHTML = `<div class="card"><div class="card-title" style="color:var(--danger)">ERROR AL RENDERIZAR</div><div>${err.message}</div></div>`;
+    view.innerHTML = `<div class="card"><div class="card-title" style="color:var(--danger)">ERROR</div><div>${err.message}</div></div>`;
   }
 }
 
-function safeBind(fn) {
-  try { fn?.(); } catch (e) { console.error('[ZENITH] bind error en', fn?.name, e); }
-}
+function safeBind(fn) { try { fn?.(); } catch (e) {} }
 export function refreshView() { if (_currentViewFn) renderView(_currentViewFn, _currentParams); }
 
 // ============================================================
-// 🔥 SISTEMA DE IMPRESIÓN
+// 🔥 SISTEMA DE IMPRESIÓN PREMIUM
 // ============================================================
 
 function injectPrintButton() {
@@ -167,7 +144,6 @@ function openPrintModal() {
   const division = db.divisions.find(d => d.id === state.divisionId) || db.divisions[0];
   if (!division) return toast('Sin división activa', 'error');
 
-  // Obtenemos datos para los selectores
   const matches = db.matches.filter(m => m.divisionId === division.id).sort((a,b) => a.matchday - b.matchday);
   const matchdays = [...new Set(matches.map(m => m.matchday))];
 
@@ -183,14 +159,12 @@ function openPrintModal() {
           <option value="match">⚔️ Resultado de un Partido</option>
         </select>
       </div>
-
       <div class="field" id="print-matchday-wrap" style="display:none;">
         <label>Selecciona la Jornada</label>
         <select class="select" id="print-matchday-select">
           ${matchdays.map(md => `<option value="${md}">Jornada ${md}</option>`).join('')}
         </select>
       </div>
-
       <div class="field" id="print-match-wrap" style="display:none;">
         <label>Selecciona el Partido</label>
         <select class="select" id="print-match-select">
@@ -201,7 +175,6 @@ function openPrintModal() {
           }).join('')}
         </select>
       </div>
-
       <div id="print-preview-area" style="display:none; margin-top:20px; text-align:center; background:var(--bg-deep); padding:10px; border-radius:8px; overflow:auto; max-height:400px;">
         <img id="print-image-preview" style="max-width:100%; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
       </div>
@@ -239,17 +212,19 @@ function openPrintModal() {
           const type = typeSel.value;
           let htmlContent = '';
 
+          // Obtenemos el tema para usarlo en el documento
+          const theme = db.config.theme?.active || {};
+
           if (type === 'standings') {
-            htmlContent = buildStandingsHTML(db, division);
+            htmlContent = buildStandingsHTML(db, division, theme);
           } else if (type === 'matchday') {
             const md = root.querySelector('#print-matchday-select').value;
-            htmlContent = buildMatchdayHTML(db, division, md);
+            htmlContent = buildMatchdayHTML(db, division, md, theme);
           } else if (type === 'match') {
             const matchId = root.querySelector('#print-match-select').value;
-            htmlContent = buildMatchHTML(db, division, matchId);
+            htmlContent = buildMatchHTML(db, division, matchId, theme);
           }
 
-          // Cargamos html2canvas dinámicamente si no está
           if (typeof html2canvas === 'undefined') {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
@@ -257,7 +232,6 @@ function openPrintModal() {
             await new Promise(resolve => script.onload = resolve);
           }
 
-          // Creamos un contenedor temporal fuera de la pantalla
           const tempDiv = document.createElement('div');
           tempDiv.style.position = 'absolute';
           tempDiv.style.left = '-9999px';
@@ -266,11 +240,10 @@ function openPrintModal() {
           tempDiv.innerHTML = htmlContent;
           document.body.appendChild(tempDiv);
 
-          // Convertimos a imagen
           const canvas = await html2canvas(tempDiv, { backgroundColor: '#ffffff', scale: 2 });
           const dataUrl = canvas.toDataURL('image/png');
           
-          document.body.removeChild(tempDiv); // Limpiamos
+          document.body.removeChild(tempDiv);
 
           imgPreview.src = dataUrl;
           previewArea.style.display = 'block';
@@ -304,62 +277,109 @@ function openPrintModal() {
 
 // ---------- CONSTRUCTORES HTML PARA IMPRESIÓN ----------
 
-function basePrintTemplate(title, subtitle, contentHTML) {
+function basePrintTemplate(title, subtitle, contentHTML, theme) {
+  const brandName = theme.brandName || 'ZENITH CHAMPIONSHIP';
+  const brandMotto = theme.brandMotto || 'YOUR LEVEL IS NOT YOUR LIMIT';
+  const logo = theme.logo || '';
+  const accent = theme.colors?.accent || '#6FA8FF';
+  const gold = theme.colors?.gold || '#E6C476';
+  
+  // Convertimos el hex del acento a RGB para la sombra
+  const hex2rgb = (hex) => {
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+      r = parseInt(hex[1]+hex[1], 16); g = parseInt(hex[2]+hex[2], 16); b = parseInt(hex[3]+hex[3], 16);
+    } else if (hex.length === 7) {
+      r = parseInt(hex[1]+hex[2], 16); g = parseInt(hex[3]+hex[4], 16); b = parseInt(hex[5]+hex[6], 16);
+    }
+    return `${r}, ${g}, ${b}`;
+  };
+  const accentRgb = hex2rgb(accent);
+
   return `
-    <div style="font-family: 'Inter', sans-serif; background:#fff; color:#000; padding:40px; box-sizing:border-box;">
-      <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:20px; margin-bottom:30px;">
-        <h1 style="font-family: 'Rajdhani', sans-serif; font-size:36px; margin:0; letter-spacing:2px; text-transform:uppercase;">${title}</h1>
-        <div style="font-size:16px; color:#555; margin-top:10px;">${subtitle}</div>
-        <div style="font-size:12px; color:#888; margin-top:5px;">Generado el ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}</div>
+    <div style="font-family: 'Inter', sans-serif; background:#ffffff; color:#111; padding:40px; box-sizing:border-box; width: 1000px; min-height: 800px; display:flex; flex-direction:column;">
+      
+      <!-- ENCABEZADO CON IDENTIDAD DE LA LIGA -->
+      <div style="display:flex; align-items:center; justify-content:space-between; border-bottom: 3px solid ${accent}; padding-bottom:20px; margin-bottom:30px;">
+        <div style="display:flex; align-items:center; gap:20px;">
+          ${logo 
+            ? `<img src="${logo}" style="width:80px; height:80px; object-fit:contain;">` 
+            : `<div style="width:80px; height:80px; background:${accent}; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:30px; font-weight:bold;">◆</div>`}
+          <div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-size:32px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#000; margin:0; line-height:1;">${brandName}</div>
+            <div style="font-size:12px; color:#666; letter-spacing:3px; margin-top:6px; text-transform:uppercase;">${brandMotto}</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:16px; font-weight:bold; color:${accent};">${title}</div>
+          <div style="font-size:12px; color:#444; margin-top:4px;">${subtitle}</div>
+          <div style="font-size:10px; color:#888; margin-top:2px;">Generado el ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}</div>
+        </div>
       </div>
-      ${contentHTML}
-      <div style="text-align:center; margin-top:40px; font-size:10px; color:#aaa;">ZENITH CHAMPIONSHIP · Documento Oficial</div>
+
+      <!-- CUERPO -->
+      <div style="flex:1;">
+        ${contentHTML}
+      </div>
+
+      <!-- PIE DE PÁGINA -->
+      <div style="text-align:center; margin-top:40px; font-size:10px; color:#aaa; border-top:1px solid #eee; padding-top:15px; letter-spacing:1px;">
+        DOCUMENTO OFICIAL · ${brandName} · GENERADO POR EL ECOSISTEMA ZENITH
+      </div>
     </div>
   `;
 }
 
-function buildStandingsHTML(db, division) {
+function buildStandingsHTML(db, division, theme) {
   const season = db.seasons.find(s => s.active) || db.seasons[0];
   const standings = computeStandings(division.id, season?.id);
+  const accent = theme.colors?.accent || '#6FA8FF';
+  const gold = theme.colors?.gold || '#E6C476';
 
   const rows = standings.map(r => `
-    <tr>
-      <td style="padding:10px; border-bottom:1px solid #ddd; text-align:center; font-weight:bold; width:40px;">${r.pos}</td>
-      <td style="padding:10px; border-bottom:1px solid #ddd;">
-        ${r.name}
+    <tr style="border-bottom: 1px solid #eaeaea;">
+      <td style="padding:12px 8px; text-align:center; font-weight:bold; font-family:'Rajdhani',sans-serif; font-size:16px; width:50px; color:${r.pos === 1 ? gold : '#555'};">
+        ${r.pos}
       </td>
-      <td style="padding:10px; border-bottom:1px solid #ddd; text-align:center;">${r.SJ}</td>
-      <td style="padding:10px; border-bottom:1px solid #ddd; text-align:center; font-weight:bold;">${r.PTS}</td>
-      <td style="padding:10px; border-bottom:1px solid #ddd; text-align:center;">${r.SG}</td>
-      <td style="padding:10px; border-bottom:1px solid #ddd; text-align:center;">${r.DP}</td>
-      <td style="padding:10px; border-bottom:1px solid #ddd; text-align:center;">${r.GF}</td>
-      <td style="padding:10px; border-bottom:1px solid #ddd; text-align:center;">${r.GC}</td>
+      <td style="padding:12px 8px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          ${r.logo ? `<img src="${r.logo}" style="width:32px; height:32px; object-fit:contain;">` : `<div style="width:32px; height:32px; background:#eee; border-radius:6px;"></div>`}
+          <span style="font-weight:600; font-size:14px; color:#111;">${r.name}</span>
+        </div>
+      </td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.SJ}</td>
+      <td style="padding:12px 8px; text-align:center; font-weight:bold; font-size:15px; color:${accent};">${r.PTS}</td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.SG}</td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.DP > 0 ? '+'+r.DP : r.DP}</td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.GF}</td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.GC}</td>
     </tr>
   `).join('');
 
   const content = `
     <table style="width:100%; border-collapse:collapse; font-size:14px;">
       <thead>
-        <tr style="background:#f0f0f0;">
-          <th style="padding:12px; text-align:center; border-bottom:2px solid #000;">#</th>
-          <th style="padding:12px; text-align:left; border-bottom:2px solid #000;">EQUIPO</th>
-          <th style="padding:12px; text-align:center; border-bottom:2px solid #000;">SJ</th>
-          <th style="padding:12px; text-align:center; border-bottom:2px solid #000;">PTS</th>
-          <th style="padding:12px; text-align:center; border-bottom:2px solid #000;">SG</th>
-          <th style="padding:12px; text-align:center; border-bottom:2px solid #000;">DP</th>
-          <th style="padding:12px; text-align:center; border-bottom:2px solid #000;">GF</th>
-          <th style="padding:12px; text-align:center; border-bottom:2px solid #000;">GC</th>
+        <tr style="background:${accent}15; border-bottom:2px solid ${accent};">
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">#</th>
+          <th style="padding:12px 8px; text-align:left; font-size:11px; letter-spacing:1px; color:#111;">EQUIPO</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">SJ</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">PTS</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">SG</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">DP</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">GF</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">GC</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
   `;
 
-  return basePrintTemplate(`TABLA GENERAL · ${division.name}`, `Temporada ${season.name}`, content);
+  return basePrintTemplate(`TABLA GENERAL`, `${division.name} · ${season.name}`, content, theme);
 }
 
-function buildMatchdayHTML(db, division, matchday) {
+function buildMatchdayHTML(db, division, matchday, theme) {
   const matches = db.matches.filter(m => m.divisionId === division.id && m.matchday == matchday);
+  const accent = theme.colors?.accent || '#6FA8FF';
   
   const rows = matches.map(m => {
     const A = db.teams.find(t => t.id === m.teamAId) || { name: 'TBD' };
@@ -367,24 +387,34 @@ function buildMatchdayHTML(db, division, matchday) {
     const sA = m.games.filter(g => g.scoreA > g.scoreB).length;
     const sB = m.games.filter(g => g.scoreB > g.scoreA).length;
     const state = m.status === 'finished' ? 'FINALIZADO' : m.status === 'live' ? 'EN JUEGO' : 'PENDIENTE';
+    const stateColor = m.status === 'finished' ? '#333' : m.status === 'live' ? '#B23A3A' : '#888';
 
     return `
-      <div style="display:flex; align-items:center; justify-content:center; border-bottom:1px solid #ddd; padding:15px 0;">
-        <div style="flex:1; text-align:right; padding-right:20px; font-weight:bold; font-size:16px;">${A.name}</div>
-        <div style="background:#f0f0f0; padding:8px 20px; border-radius:8px; font-family:'Rajdhani',sans-serif; font-size:20px; font-weight:bold; border:1px solid #ccc;">
+      <div style="display:flex; align-items:center; justify-content:center; border-bottom:1px solid #eaeaea; padding:16px 0;">
+        <div style="flex:1; display:flex; align-items:center; justify-content:flex-end; gap:12px; padding-right:20px;">
+          <span style="font-weight:bold; font-size:16px; color:#111;">${A.name}</span>
+          ${A.logo ? `<img src="${A.logo}" style="width:36px; height:36px; object-fit:contain;">` : ''}
+        </div>
+        
+        <div style="background:#f8f9fa; padding:8px 24px; border-radius:8px; font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:bold; border:1px solid #ddd; color:${accent}; min-width:100px; text-align:center;">
           ${sA} - ${sB}
         </div>
-        <div style="flex:1; text-align:left; padding-left:20px; font-weight:bold; font-size:16px;">${B.name}</div>
-        <div style="width:120px; text-align:right; font-size:11px; color:#555; letter-spacing:1px;">${state}</div>
+        
+        <div style="flex:1; display:flex; align-items:center; justify-content:flex-start; gap:12px; padding-left:20px;">
+          ${B.logo ? `<img src="${B.logo}" style="width:36px; height:36px; object-fit:contain;">` : ''}
+          <span style="font-weight:bold; font-size:16px; color:#111;">${B.name}</span>
+        </div>
+        
+        <div style="width:100px; text-align:right; font-size:11px; font-weight:bold; color:${stateColor}; letter-spacing:1px;">${state}</div>
       </div>
     `;
   }).join('');
 
-  const content = `<div style="display:flex; flex-direction:column; gap:10px;">${rows}</div>`;
-  return basePrintTemplate(`JORNADA ${matchday}`, `${division.name}`, content);
+  const content = `<div style="display:flex; flex-direction:column;">${rows}</div>`;
+  return basePrintTemplate(`JORNADA ${matchday}`, division.name, content, theme);
 }
 
-function buildMatchHTML(db, division, matchId) {
+function buildMatchHTML(db, division, matchId, theme) {
   const m = db.matches.find(x => x.id === matchId);
   if (!m) return '';
 
@@ -392,42 +422,65 @@ function buildMatchHTML(db, division, matchId) {
   const B = db.teams.find(t => t.id === m.teamBId) || { name: 'TBD' };
   const sA = m.games.filter(g => g.scoreA > g.scoreB).length;
   const sB = m.games.filter(g => g.scoreB > g.scoreA).length;
+  const accent = theme.colors?.accent || '#6FA8FF';
+  const gold = theme.colors?.gold || '#E6C476';
 
   let gamesHTML = '';
   if (m.games.length > 0) {
     gamesHTML = m.games.map((g, i) => {
-      const pA = g.players.filter(p => p.teamId === A.id).map(p => `${db.players.find(x=>x.id===p.playerId)?.name} (${p.goals}G, ${p.assists}A)`).join(', ');
-      const pB = g.players.filter(p => p.teamId === B.id).map(p => `${db.players.find(x=>x.id===p.playerId)?.name} (${p.goals}G, ${p.assists}A)`).join(', ');
+      const pA = g.players.filter(p => p.teamId === A.id).map(p => {
+        const pl = db.players.find(x=>x.id===p.playerId);
+        return `${pl?.name} <span style="color:#666;font-size:10px;">(${p.goals}G, ${p.assists}A)</span>`;
+      }).join('<br>');
+      
+      const pB = g.players.filter(p => p.teamId === B.id).map(p => {
+        const pl = db.players.find(x=>x.id===p.playerId);
+        return `${pl?.name} <span style="color:#666;font-size:10px;">(${p.goals}G, ${p.assists}A)</span>`;
+      }).join('<br>');
+
       return `
-        <div style="margin-bottom:20px; border:1px solid #ddd; border-radius:8px; overflow:hidden;">
-          <div style="background:#f0f0f0; padding:10px; text-align:center; font-weight:bold; border-bottom:1px solid #ddd;">PARTIDA ${i+1}</div>
-          <div style="display:flex; justify-content:space-between; padding:15px;">
-            <div style="flex:1; text-align:right; padding-right:15px;">
-              <div style="font-weight:bold; font-size:14px; margin-bottom:5px;">${A.name}</div>
-              <div style="font-size:11px; color:#555;">${pA || 'Sin datos'}</div>
+        <div style="margin-bottom:20px; border:1px solid #eaeaea; border-radius:12px; overflow:hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+          <div style="background:${accent}10; padding:10px; text-align:center; font-weight:bold; border-bottom:1px solid #eaeaea; color:${accent}; font-size:12px; letter-spacing:1px;">PARTIDA ${i+1}</div>
+          <div style="display:flex; justify-content:space-between; padding:20px;">
+            <div style="flex:1; text-align:right; padding-right:20px;">
+              <div style="font-weight:bold; font-size:16px; margin-bottom:8px; color:#111;">${A.name}</div>
+              <div style="font-size:12px; color:#444; line-height:1.6;">${pA || 'Sin datos'}</div>
             </div>
-            <div style="font-family:'Rajdhani',sans-serif; font-size:24px; font-weight:bold; padding:0 15px;">${g.scoreA} - ${g.scoreB}</div>
-            <div style="flex:1; text-align:left; padding-left:15px;">
-              <div style="font-weight:bold; font-size:14px; margin-bottom:5px;">${B.name}</div>
-              <div style="font-size:11px; color:#555;">${pB || 'Sin datos'}</div>
+            <div style="font-family:'Rajdhani',sans-serif; font-size:32px; font-weight:bold; padding:0 20px; display:flex; align-items:center; color:${accent};">
+              ${g.scoreA} - ${g.scoreB}
+            </div>
+            <div style="flex:1; text-align:left; padding-left:20px;">
+              <div style="font-weight:bold; font-size:16px; margin-bottom:8px; color:#111;">${B.name}</div>
+              <div style="font-size:12px; color:#444; line-height:1.6;">${pB || 'Sin datos'}</div>
             </div>
           </div>
         </div>
       `;
     }).join('');
   } else {
-    gamesHTML = `<div style="text-align:center; color:#888; padding:20px;">No hay partidas registradas aún.</div>`;
+    gamesHTML = `<div style="text-align:center; color:#888; padding:40px; font-size:14px; border: 1px dashed #ccc; border-radius:12px;">No hay partidas registradas aún.</div>`;
   }
 
   const content = `
-    <div style="text-align:center; margin-bottom:30px;">
-      <div style="font-family:'Rajdhani',sans-serif; font-size:64px; font-weight:bold;">${sA} - ${sB}</div>
-      <div style="font-size:16px; color:#555;">${m.format} · Jornada ${m.matchday}</div>
+    <!-- HERO DEL PARTIDO -->
+    <div style="display:flex; align-items:center; justify-content:center; gap:30px; margin-bottom:40px; background:linear-gradient(180deg, #fff, #f9f9f9); padding:30px; border-radius:16px; border:1px solid #eaeaea;">
+      <div style="text-align:center;">
+        ${A.logo ? `<img src="${A.logo}" style="width:80px; height:80px; object-fit:contain; margin-bottom:10px;">` : ''}
+        <div style="font-weight:bold; font-size:20px; color:#111;">${A.name}</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-family:'Rajdhani',sans-serif; font-size:64px; font-weight:800; color:${accent}; line-height:1;">${sA} - ${sB}</div>
+        <div style="font-size:12px; color:#666; margin-top:10px; text-transform:uppercase; letter-spacing:2px;">${m.format} · Jornada ${m.matchday}</div>
+      </div>
+      <div style="text-align:center;">
+        ${B.logo ? `<img src="${B.logo}" style="width:80px; height:80px; object-fit:contain; margin-bottom:10px;">` : ''}
+        <div style="font-weight:bold; font-size:20px; color:#111;">${B.name}</div>
+      </div>
     </div>
     ${gamesHTML}
   `;
 
-  return basePrintTemplate(`RESUMEN DEL PARTIDO`, `${A.name} vs ${B.name}`, content);
+  return basePrintTemplate(`RESUMEN DEL PARTIDO`, `${A.name} vs ${B.name}`, content, theme);
 }
 
 // ---------- NAV ----------
@@ -449,7 +502,6 @@ document.addEventListener('click', (e) => {
   document.getElementById('sidebarOverlay')?.classList.remove('open');
 });
 
-// ---------- HEADER LABELS ----------
 function updateHeaderLabels() {
   const db = getDB();
   if (!db) return;
@@ -466,7 +518,6 @@ function updateHeaderLabels() {
   if (chipSeason && season) chipSeason.textContent = season.name;
 }
 
-// ---------- SEASON DROPDOWN ----------
 function buildSeasonDropdown() {
   const db = getDB();
   const dropdown = document.getElementById('seasonDropdown');
@@ -513,7 +564,6 @@ function buildSeasonDropdown() {
   });
 }
 
-// ---------- DIVISION DROPDOWN ----------
 function buildDivisionDropdown() {
   const db = getDB();
   const dropdown = document.getElementById('divisionDropdown');
@@ -539,7 +589,6 @@ function buildDivisionDropdown() {
   });
 }
 
-// ---------- HEADER EVENTS ----------
 function setupHeaderEvents() {
   document.getElementById('seasonBtn')?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -569,7 +618,6 @@ function setupHeaderEvents() {
   });
 }
 
-// ---------- MOBILE SIDEBAR ----------
 function setupMobileSidebar() {
   const sidebar = document.getElementById('publicSidebar');
   const overlay = document.getElementById('sidebarOverlay');
@@ -585,5 +633,4 @@ function esc(str) {
   return String(str ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
 }
 
-// ---------- START ----------
 boot();

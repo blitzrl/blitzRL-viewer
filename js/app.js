@@ -1,5 +1,5 @@
 // ============================================================
-// ZENITH VIEWER — Bootstrap + Sistema de Impresión Premium
+// ZENITH VIEWER — Bootstrap + Sistema de Impresión Dark Mode
 // ============================================================
 import { loadDB, reloadDB, getDB, setViewSeasonId } from './services/storage.js';
 import { subscribeToChanges } from './services/supabase.js';
@@ -116,7 +116,7 @@ function safeBind(fn) { try { fn?.(); } catch (e) {} }
 export function refreshView() { if (_currentViewFn) renderView(_currentViewFn, _currentParams); }
 
 // ============================================================
-// 🔥 SISTEMA DE IMPRESIÓN PREMIUM
+// 🔥 SISTEMA DE IMPRESIÓN (DARK MODE)
 // ============================================================
 
 function injectPrintButton() {
@@ -211,8 +211,6 @@ function openPrintModal() {
         try {
           const type = typeSel.value;
           let htmlContent = '';
-
-          // Obtenemos el tema para usarlo en el documento
           const theme = db.config.theme?.active || {};
 
           if (type === 'standings') {
@@ -236,11 +234,15 @@ function openPrintModal() {
           tempDiv.style.position = 'absolute';
           tempDiv.style.left = '-9999px';
           tempDiv.style.top = '0';
-          tempDiv.style.width = '1000px'; // Ancho fijo para buena calidad
+          tempDiv.style.width = '1000px';
           tempDiv.innerHTML = htmlContent;
           document.body.appendChild(tempDiv);
 
-          const canvas = await html2canvas(tempDiv, { backgroundColor: '#ffffff', scale: 2 });
+          // 🔥 FORZAMOS EL FONDO OSCURO EN LA CAPTURA
+          const canvas = await html2canvas(tempDiv, { 
+            backgroundColor: '#0D0E12', // Fondo oscuro
+            scale: 2 
+          });
           const dataUrl = canvas.toDataURL('image/png');
           
           document.body.removeChild(tempDiv);
@@ -260,7 +262,7 @@ function openPrintModal() {
 
           btnPrint.onclick = () => {
             const win = window.open('');
-            win.document.write(`<img src="${dataUrl}" style="width:100%;" onload="window.print();window.close();">`);
+            win.document.write(`<body style="margin:0;background:#0D0E12"><img src="${dataUrl}" style="width:100%;" onload="window.print();window.close();"></body>`);
           };
 
         } catch (e) {
@@ -275,45 +277,32 @@ function openPrintModal() {
   });
 }
 
-// ---------- CONSTRUCTORES HTML PARA IMPRESIÓN ----------
+// ---------- CONSTRUCTORES HTML PARA IMPRESIÓN (DARK MODE) ----------
 
 function basePrintTemplate(title, subtitle, contentHTML, theme) {
   const brandName = theme.brandName || 'ZENITH CHAMPIONSHIP';
   const brandMotto = theme.brandMotto || 'YOUR LEVEL IS NOT YOUR LIMIT';
   const logo = theme.logo || '';
   const accent = theme.colors?.accent || '#6FA8FF';
-  const gold = theme.colors?.gold || '#E6C476';
   
-  // Convertimos el hex del acento a RGB para la sombra
-  const hex2rgb = (hex) => {
-    let r = 0, g = 0, b = 0;
-    if (hex.length === 4) {
-      r = parseInt(hex[1]+hex[1], 16); g = parseInt(hex[2]+hex[2], 16); b = parseInt(hex[3]+hex[3], 16);
-    } else if (hex.length === 7) {
-      r = parseInt(hex[1]+hex[2], 16); g = parseInt(hex[3]+hex[4], 16); b = parseInt(hex[5]+hex[6], 16);
-    }
-    return `${r}, ${g}, ${b}`;
-  };
-  const accentRgb = hex2rgb(accent);
-
   return `
-    <div style="font-family: 'Inter', sans-serif; background:#ffffff; color:#111; padding:40px; box-sizing:border-box; width: 1000px; min-height: 800px; display:flex; flex-direction:column;">
+    <div style="font-family: 'Inter', sans-serif; background:#0D0E12; color:#fff; padding:40px; box-sizing:border-box; width: 1000px; min-height: 800px; display:flex; flex-direction:column;">
       
-      <!-- ENCABEZADO CON IDENTIDAD DE LA LIGA -->
-      <div style="display:flex; align-items:center; justify-content:space-between; border-bottom: 3px solid ${accent}; padding-bottom:20px; margin-bottom:30px;">
+      <!-- ENCABEZADO -->
+      <div style="display:flex; align-items:center; justify-content:space-between; border-bottom: 2px solid ${accent}; padding-bottom:20px; margin-bottom:30px;">
         <div style="display:flex; align-items:center; gap:20px;">
           ${logo 
             ? `<img src="${logo}" style="width:80px; height:80px; object-fit:contain;">` 
-            : `<div style="width:80px; height:80px; background:${accent}; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:30px; font-weight:bold;">◆</div>`}
+            : `<div style="width:80px; height:80px; background:${accent}; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#0D0E12; font-size:30px; font-weight:bold;">◆</div>`}
           <div>
-            <div style="font-family: 'Rajdhani', sans-serif; font-size:32px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#000; margin:0; line-height:1;">${brandName}</div>
-            <div style="font-size:12px; color:#666; letter-spacing:3px; margin-top:6px; text-transform:uppercase;">${brandMotto}</div>
+            <div style="font-family: 'Rajdhani', sans-serif; font-size:32px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#E8EAED; margin:0; line-height:1;">${brandName}</div>
+            <div style="font-size:12px; color:#8D929A; letter-spacing:3px; margin-top:6px; text-transform:uppercase;">${brandMotto}</div>
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:16px; font-weight:bold; color:${accent};">${title}</div>
-          <div style="font-size:12px; color:#444; margin-top:4px;">${subtitle}</div>
-          <div style="font-size:10px; color:#888; margin-top:2px;">Generado el ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}</div>
+          <div style="font-size:16px; font-weight:bold; color:${accent}; text-transform:uppercase; letter-spacing:1px;">${title}</div>
+          <div style="font-size:12px; color:#C7CBD1; margin-top:4px;">${subtitle}</div>
+          <div style="font-size:10px; color:#8D929A; margin-top:2px;">Generado el ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}</div>
         </div>
       </div>
 
@@ -322,8 +311,8 @@ function basePrintTemplate(title, subtitle, contentHTML, theme) {
         ${contentHTML}
       </div>
 
-      <!-- PIE DE PÁGINA -->
-      <div style="text-align:center; margin-top:40px; font-size:10px; color:#aaa; border-top:1px solid #eee; padding-top:15px; letter-spacing:1px;">
+      <!-- PIE -->
+      <div style="text-align:center; margin-top:40px; font-size:10px; color:#8D929A; border-top:1px solid #25272B; padding-top:15px; letter-spacing:1px;">
         DOCUMENTO OFICIAL · ${brandName} · GENERADO POR EL ECOSISTEMA ZENITH
       </div>
     </div>
@@ -337,37 +326,37 @@ function buildStandingsHTML(db, division, theme) {
   const gold = theme.colors?.gold || '#E6C476';
 
   const rows = standings.map(r => `
-    <tr style="border-bottom: 1px solid #eaeaea;">
-      <td style="padding:12px 8px; text-align:center; font-weight:bold; font-family:'Rajdhani',sans-serif; font-size:16px; width:50px; color:${r.pos === 1 ? gold : '#555'};">
+    <tr style="border-bottom: 1px solid #25272B;">
+      <td style="padding:12px 8px; text-align:center; font-weight:bold; font-family:'Rajdhani',sans-serif; font-size:16px; width:50px; color:${r.pos === 1 ? gold : '#8D929A'};">
         ${r.pos}
       </td>
       <td style="padding:12px 8px;">
         <div style="display:flex; align-items:center; gap:12px;">
-          ${r.logo ? `<img src="${r.logo}" style="width:32px; height:32px; object-fit:contain;">` : `<div style="width:32px; height:32px; background:#eee; border-radius:6px;"></div>`}
-          <span style="font-weight:600; font-size:14px; color:#111;">${r.name}</span>
+          ${r.logo ? `<img src="${r.logo}" style="width:32px; height:32px; object-fit:contain;">` : `<div style="width:32px; height:32px; background:#16181C; border-radius:6px; border:1px solid #25272B;"></div>`}
+          <span style="font-weight:600; font-size:14px; color:#E8EAED;">${r.name}</span>
         </div>
       </td>
-      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.SJ}</td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#C7CBD1;">${r.SJ}</td>
       <td style="padding:12px 8px; text-align:center; font-weight:bold; font-size:15px; color:${accent};">${r.PTS}</td>
-      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.SG}</td>
-      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.DP > 0 ? '+'+r.DP : r.DP}</td>
-      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.GF}</td>
-      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#444;">${r.GC}</td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#C7CBD1;">${r.SG}</td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#C7CBD1;">${r.DP > 0 ? '+'+r.DP : r.DP}</td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#C7CBD1;">${r.GF}</td>
+      <td style="padding:12px 8px; text-align:center; font-size:13px; color:#C7CBD1;">${r.GC}</td>
     </tr>
   `).join('');
 
   const content = `
     <table style="width:100%; border-collapse:collapse; font-size:14px;">
       <thead>
-        <tr style="background:${accent}15; border-bottom:2px solid ${accent};">
-          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">#</th>
-          <th style="padding:12px 8px; text-align:left; font-size:11px; letter-spacing:1px; color:#111;">EQUIPO</th>
-          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">SJ</th>
-          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">PTS</th>
-          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">SG</th>
-          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">DP</th>
-          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">GF</th>
-          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#111;">GC</th>
+        <tr style="background:#16181C; border-bottom:2px solid ${accent};">
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#E8EAED;">#</th>
+          <th style="padding:12px 8px; text-align:left; font-size:11px; letter-spacing:1px; color:#E8EAED;">EQUIPO</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#E8EAED;">SJ</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#E8EAED;">PTS</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#E8EAED;">SG</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#E8EAED;">DP</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#E8EAED;">GF</th>
+          <th style="padding:12px 8px; text-align:center; font-size:11px; letter-spacing:1px; color:#E8EAED;">GC</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -387,22 +376,22 @@ function buildMatchdayHTML(db, division, matchday, theme) {
     const sA = m.games.filter(g => g.scoreA > g.scoreB).length;
     const sB = m.games.filter(g => g.scoreB > g.scoreA).length;
     const state = m.status === 'finished' ? 'FINALIZADO' : m.status === 'live' ? 'EN JUEGO' : 'PENDIENTE';
-    const stateColor = m.status === 'finished' ? '#333' : m.status === 'live' ? '#B23A3A' : '#888';
+    const stateColor = m.status === 'finished' ? '#63C28A' : m.status === 'live' ? '#E25C5C' : '#8D929A';
 
     return `
-      <div style="display:flex; align-items:center; justify-content:center; border-bottom:1px solid #eaeaea; padding:16px 0;">
+      <div style="display:flex; align-items:center; justify-content:center; border-bottom:1px solid #25272B; padding:16px 0;">
         <div style="flex:1; display:flex; align-items:center; justify-content:flex-end; gap:12px; padding-right:20px;">
-          <span style="font-weight:bold; font-size:16px; color:#111;">${A.name}</span>
+          <span style="font-weight:bold; font-size:16px; color:#E8EAED;">${A.name}</span>
           ${A.logo ? `<img src="${A.logo}" style="width:36px; height:36px; object-fit:contain;">` : ''}
         </div>
         
-        <div style="background:#f8f9fa; padding:8px 24px; border-radius:8px; font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:bold; border:1px solid #ddd; color:${accent}; min-width:100px; text-align:center;">
+        <div style="background:#16181C; padding:8px 24px; border-radius:8px; font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:bold; border:1px solid #25272B; color:${accent}; min-width:100px; text-align:center;">
           ${sA} - ${sB}
         </div>
         
         <div style="flex:1; display:flex; align-items:center; justify-content:flex-start; gap:12px; padding-left:20px;">
           ${B.logo ? `<img src="${B.logo}" style="width:36px; height:36px; object-fit:contain;">` : ''}
-          <span style="font-weight:bold; font-size:16px; color:#111;">${B.name}</span>
+          <span style="font-weight:bold; font-size:16px; color:#E8EAED;">${B.name}</span>
         </div>
         
         <div style="width:100px; text-align:right; font-size:11px; font-weight:bold; color:${stateColor}; letter-spacing:1px;">${state}</div>
@@ -430,51 +419,50 @@ function buildMatchHTML(db, division, matchId, theme) {
     gamesHTML = m.games.map((g, i) => {
       const pA = g.players.filter(p => p.teamId === A.id).map(p => {
         const pl = db.players.find(x=>x.id===p.playerId);
-        return `${pl?.name} <span style="color:#666;font-size:10px;">(${p.goals}G, ${p.assists}A)</span>`;
+        return `${pl?.name} <span style="color:#8D929A;font-size:10px;">(${p.goals}G, ${p.assists}A)</span>`;
       }).join('<br>');
       
       const pB = g.players.filter(p => p.teamId === B.id).map(p => {
         const pl = db.players.find(x=>x.id===p.playerId);
-        return `${pl?.name} <span style="color:#666;font-size:10px;">(${p.goals}G, ${p.assists}A)</span>`;
+        return `${pl?.name} <span style="color:#8D929A;font-size:10px;">(${p.goals}G, ${p.assists}A)</span>`;
       }).join('<br>');
 
       return `
-        <div style="margin-bottom:20px; border:1px solid #eaeaea; border-radius:12px; overflow:hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-          <div style="background:${accent}10; padding:10px; text-align:center; font-weight:bold; border-bottom:1px solid #eaeaea; color:${accent}; font-size:12px; letter-spacing:1px;">PARTIDA ${i+1}</div>
+        <div style="margin-bottom:20px; border:1px solid #25272B; border-radius:12px; overflow:hidden; background:#121316;">
+          <div style="background:#16181C; padding:10px; text-align:center; font-weight:bold; border-bottom:1px solid #25272B; color:${accent}; font-size:12px; letter-spacing:1px;">PARTIDA ${i+1}</div>
           <div style="display:flex; justify-content:space-between; padding:20px;">
             <div style="flex:1; text-align:right; padding-right:20px;">
-              <div style="font-weight:bold; font-size:16px; margin-bottom:8px; color:#111;">${A.name}</div>
-              <div style="font-size:12px; color:#444; line-height:1.6;">${pA || 'Sin datos'}</div>
+              <div style="font-weight:bold; font-size:16px; margin-bottom:8px; color:#E8EAED;">${A.name}</div>
+              <div style="font-size:12px; color:#C7CBD1; line-height:1.6;">${pA || 'Sin datos'}</div>
             </div>
             <div style="font-family:'Rajdhani',sans-serif; font-size:32px; font-weight:bold; padding:0 20px; display:flex; align-items:center; color:${accent};">
               ${g.scoreA} - ${g.scoreB}
             </div>
             <div style="flex:1; text-align:left; padding-left:20px;">
-              <div style="font-weight:bold; font-size:16px; margin-bottom:8px; color:#111;">${B.name}</div>
-              <div style="font-size:12px; color:#444; line-height:1.6;">${pB || 'Sin datos'}</div>
+              <div style="font-weight:bold; font-size:16px; margin-bottom:8px; color:#E8EAED;">${B.name}</div>
+              <div style="font-size:12px; color:#C7CBD1; line-height:1.6;">${pB || 'Sin datos'}</div>
             </div>
           </div>
         </div>
       `;
     }).join('');
   } else {
-    gamesHTML = `<div style="text-align:center; color:#888; padding:40px; font-size:14px; border: 1px dashed #ccc; border-radius:12px;">No hay partidas registradas aún.</div>`;
+    gamesHTML = `<div style="text-align:center; color:#8D929A; padding:40px; font-size:14px; border: 1px dashed #25272B; border-radius:12px; background:#121316;">No hay partidas registradas aún.</div>`;
   }
 
   const content = `
-    <!-- HERO DEL PARTIDO -->
-    <div style="display:flex; align-items:center; justify-content:center; gap:30px; margin-bottom:40px; background:linear-gradient(180deg, #fff, #f9f9f9); padding:30px; border-radius:16px; border:1px solid #eaeaea;">
+    <div style="display:flex; align-items:center; justify-content:center; gap:30px; margin-bottom:40px; background:linear-gradient(180deg, #16181C, #121316); padding:30px; border-radius:16px; border:1px solid #25272B;">
       <div style="text-align:center;">
         ${A.logo ? `<img src="${A.logo}" style="width:80px; height:80px; object-fit:contain; margin-bottom:10px;">` : ''}
-        <div style="font-weight:bold; font-size:20px; color:#111;">${A.name}</div>
+        <div style="font-weight:bold; font-size:20px; color:#E8EAED;">${A.name}</div>
       </div>
       <div style="text-align:center;">
         <div style="font-family:'Rajdhani',sans-serif; font-size:64px; font-weight:800; color:${accent}; line-height:1;">${sA} - ${sB}</div>
-        <div style="font-size:12px; color:#666; margin-top:10px; text-transform:uppercase; letter-spacing:2px;">${m.format} · Jornada ${m.matchday}</div>
+        <div style="font-size:12px; color:#8D929A; margin-top:10px; text-transform:uppercase; letter-spacing:2px;">${m.format} · Jornada ${m.matchday}</div>
       </div>
       <div style="text-align:center;">
         ${B.logo ? `<img src="${B.logo}" style="width:80px; height:80px; object-fit:contain; margin-bottom:10px;">` : ''}
-        <div style="font-weight:bold; font-size:20px; color:#111;">${B.name}</div>
+        <div style="font-weight:bold; font-size:20px; color:#E8EAED;">${B.name}</div>
       </div>
     </div>
     ${gamesHTML}

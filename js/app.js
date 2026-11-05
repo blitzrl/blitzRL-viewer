@@ -18,7 +18,7 @@ import { playoffsView, bindPlayoffsEvents } from './views/playoffs.js';
 import { ballonDorView, bindBallonDorEvents } from './views/ballonDor.js';
 import { marketView, bindMarketEvents } from './views/market.js';
 import { performanceView, bindPerformanceEvents } from './views/performance.js';
-import { destroyAllCarousels } from './views/widgetCarousel.js'; // NUEVO
+import { destroyAllCarousels } from './views/widgetCarousel.js';
 
 window.addEventListener('error', e => console.error('[ZENITH] error:', e.error || e.message));
 window.addEventListener('unhandledrejection', e => console.error('[ZENITH] promise rejected:', e.reason));
@@ -100,13 +100,10 @@ async function boot() {
 let _currentViewFn = null;
 let _currentParams = [];
 
-// FIX: Función para destruir componentes pesados antes de cambiar de vista
 function cleanupView() {
-  // 1. Destruir gráficas de Chart.js si existen
   if (window._chartStatsInstance) { window._chartStatsInstance.destroy(); window._chartStatsInstance = null; }
   if (window._chartEconomyInstance) { window._chartEconomyInstance.destroy(); window._chartEconomyInstance = null; }
   
-  // 2. Destruir intervalos de carruseles
   if (typeof destroyAllCarousels === 'function') {
     destroyAllCarousels();
   }
@@ -115,7 +112,6 @@ function cleanupView() {
 function renderView(viewFn, params) {
   const view = document.getElementById('view');
   try {
-    // FIX: Limpiar memoria antes de reescribir el HTML
     cleanupView();
 
     view.innerHTML = viewFn(params);
@@ -129,6 +125,10 @@ function renderView(viewFn, params) {
     safeBind(bindBallonDorEvents);
     safeBind(bindMarketEvents);
     safeBind(bindPerformanceEvents); 
+    
+    // 🔥 LÓGICA DE IMPRESIÓN INYECTADA AQUÍ
+    injectPrintButton();
+
     updateActiveNav();
     window.scrollTo(0, 0);
   } catch (err) {
@@ -148,6 +148,43 @@ function safeBind(fn) {
 
 export function refreshView() {
   if (_currentViewFn) renderView(_currentViewFn, _currentParams);
+}
+
+// ---------- BOTÓN DE IMPRESIÓN GLOBAL ----------
+function injectPrintButton() {
+  const currentRoute = (location.hash.replace(/^#\/?/, '') || 'dashboard').split('/')[0];
+  
+  // Vistas en las que SÍ tiene sentido imprimir
+  const printableRoutes = ['dashboard', 'stats', 'matches', 'playoffs', 'rosters', 'ballonDor', 'performance'];
+
+  const existingBtn = document.getElementById('btnPrintGlobal');
+
+  if (printableRoutes.includes(currentRoute)) {
+    // Si ya existe, no hacemos nada
+    if (existingBtn) return;
+
+    // Si estamos en una vista imprimible y no existe, lo creamos
+    const btn = document.createElement('button');
+    btn.id = 'btnPrintGlobal';
+    
+    // Estilo en línea para asegurar que siempre esté flotando sobre todo
+    btn.style.cssText = 'position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: var(--accent); color: #04101F; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); border-radius: 50px; padding: 12px 24px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: var(--font-display); letter-spacing: 0.1em; transition: transform 0.2s;';
+    btn.innerHTML = '🖨️ IMPRIMIR';
+    
+    // Efecto Hover manual
+    btn.onmouseenter = () => btn.style.transform = 'scale(1.05)';
+    btn.onmouseleave = () => btn.style.transform = 'scale(1)';
+    
+    btn.addEventListener('click', () => {
+      // El CSS de impresión ocultará este botón automáticamente (le pusimos #btnPrintGlobal en print.css)
+      window.print();
+    });
+
+    document.body.appendChild(btn);
+  } else {
+    // Si no estamos en una vista imprimible, borramos el botón si existe
+    if (existingBtn) existingBtn.remove();
+  }
 }
 
 // ---------- NAV ----------

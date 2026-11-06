@@ -15,16 +15,15 @@ function esc(str){
 export function newsView(){
   const db = getDB();
   
-  // 🔥 FIX: Ordenar de más reciente a más antiguo
+  // 🔥 FIX DEFINITIVO: Ordenar por el ID (que contiene el timestamp) de forma descendente
   const sorted = [...db.news].sort((a, b) => {
     // 1. Las fijadas (pinned) siempre van primero
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return 1;
     
-    // 2. Si ambas están fijadas o ninguna, ordenar por fecha descendente
-    const dateA = new Date(a.date || 0).getTime();
-    const dateB = new Date(b.date || 0).getTime();
-    return dateB - dateA;
+    // 2. Si ambas están fijadas o ninguna, ordenar por ID descendente
+    // Como el ID es 'news_timestamp_random', comparar los strings funciona perfecto
+    return b.id.localeCompare(a.id);
   });
 
   return `

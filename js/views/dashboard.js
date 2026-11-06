@@ -12,6 +12,23 @@ import { getWidgetType } from '../data/database.js';
 import { bindCarouselEvents } from './widgetCarousel.js';
 import { openMatchSummary } from './matchSummary.js';
 
+// 🔥 NUEVA FUNCIÓN: Traduce el texto de Discord a la Web
+export function parseDiscordText(text) {
+  if (!text) return '';
+  let parsed = text;
+  
+  // 1. Reemplazar emojis personalizados de Discord (ej: <:blitz:123> o <a:blitz:123>) por ⚡
+  parsed = parsed.replace(/<a?:[a-zA-Z0-9_]+:\d+>/g, '⚡');
+  
+  // 2. Reemplazar emojis de texto (ej: :blitz: o :escudo_atlante:) por ⚡
+  parsed = parsed.replace(/:([a-zA-Z0-9_]+):/g, '⚡');
+  
+  // 3. Convertir menciones (@ATLANTE o @BLITZ MX) en negritas con el color accent
+  parsed = parsed.replace(/(^|\s)@([a-zA-Z0-9_\-]+(?:\s+[a-zA-Z0-9_\-]+)?)/g, '$1<strong style="color:var(--accent); font-weight:700;">@$2</strong>');
+  
+  return parsed;
+}
+
 export function dashboardView(){
   const db = getDB();
   if (!db) return `<div class="card">Cargando...</div>`;
@@ -94,7 +111,6 @@ export function bindDashboardEvents(){
     card.addEventListener('click', () => openNewsModal(card.dataset.newsOpen));
   });
 
-  // Handler: abrir resumen de partido (widget Upcoming)
   document.querySelectorAll('[data-open-summary]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -105,7 +121,6 @@ export function bindDashboardEvents(){
     });
   });
 
-  // Handler: abrir resumen de partido de playoff (widgets PlayIn/PlayoffUpcoming)
   document.querySelectorAll('[data-open-playoff-summary]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -125,7 +140,6 @@ export function bindDashboardEvents(){
       const games = m.games || [];
       const status = m.winnerId ? 'finished' : (games.length > 0 ? 'live' : 'pending');
 
-      // Determinar formato
       let format;
       const lastRound = pl.bracket.rounds[pl.bracket.rounds.length - 1];
       const semiRound = pl.bracket.rounds[pl.bracket.rounds.length - 2];
@@ -156,9 +170,10 @@ function openNewsModal(newsId){
   const n = db.news.find(x => x.id === newsId);
   if (!n) return;
 
+  // 🔥 FIX: Si es texto simple, le aplicamos la traducción de Discord
   const body = (n.blocks && n.blocks.length > 0)
     ? renderBlocksHTML(n.blocks, db)
-    : `<div class="news-modal-body">${esc((n.body || '')).replace(/\n/g, '<br>')}</div>`;
+    : `<div class="news-modal-body">${parseDiscordText(esc((n.body || '')).replace(/\n/g, '<br>'))}</div>`;
 
   openModal({
     id: 'news-view-' + newsId,
@@ -184,7 +199,8 @@ export function renderBlocksHTML(blocks, db){
   return blocks.map(b => {
     switch(b.type){
       case 'text':
-        return `<div class="news-block news-block-text">${esc(b.content || '').replace(/\n/g, '<br>')}</div>`;
+        // 🔥 FIX: Aplicamos la traducción de Discord en los párrafos
+        return `<div class="news-block news-block-text">${parseDiscordText(esc(b.content || '').replace(/\n/g, '<br>'))}</div>`;
       case 'title':
         return `<h3 class="news-block news-block-title">${esc(b.content || '')}</h3>`;
       case 'image':
@@ -248,9 +264,6 @@ function buildCarouselHTML(items, slideHTMLs, instanceId, interval){
   `;
 }
 
-// ============================================================
-// WIDGET PRÓXIMO PARTIDO — con badge EN JUEGO / FINAL y marcador
-// ============================================================
 function widgetUpcoming(w, division){
   const db = getDB();
   const itemIds = w.config?.itemIds || (w.config?.matchId ? [w.config.matchId] : []);
@@ -273,7 +286,6 @@ function widgetUpcoming(w, division){
     const A = db.teams.find(t => t.id === m.teamAId) || { name: 'TBD' };
     const B = db.teams.find(t => t.id === m.teamBId) || { name: 'TBD' };
 
-    // ─── Calcular marcador parcial / final ───
     const games = m.games || [];
     const sA = games.filter(g => g.scoreA > g.scoreB).length;
     const sB = games.filter(g => g.scoreB > g.scoreA).length;
@@ -281,7 +293,6 @@ function widgetUpcoming(w, division){
     const isLive = m.status === 'live' || (hasGames && m.status !== 'finished');
     const isFinished = m.status === 'finished';
 
-    // Badge superior
     let topBadge = '';
     if (isLive) {
       topBadge = `<div class="hero-live-badge" style="margin-bottom:10px">EN JUEGO</div>`;
@@ -289,7 +300,6 @@ function widgetUpcoming(w, division){
       topBadge = `<div class="hero-final-badge" style="margin-bottom:10px">✓ FINAL</div>`;
     }
 
-    // Bloque central: VS o marcador
     let centerBlock;
     if (isLive || isFinished) {
       const winnerIsA = isFinished && sA > sB;
@@ -305,7 +315,6 @@ function widgetUpcoming(w, division){
       centerBlock = `<div class="hero-vs">VS</div>`;
     }
 
-    // Metadata inferior
     let metaLine;
     if (isLive) {
       metaLine = `<span class="chip chip-accent">${m.format || 'BO3'}</span> <span style="color:var(--muted);font-size:11px">· ${games.length} partida${games.length !== 1 ? 's' : ''} jugada${games.length !== 1 ? 's' : ''}</span>`;
@@ -321,7 +330,6 @@ function widgetUpcoming(w, division){
       `;
     }
 
-    // Botón del footer: si hay partidas, abre el resumen; si no, navega a Jornadas
     const footerBtn = hasGames
       ? `<button class="btn" data-open-summary="${m.id}">VER DETALLE DEL PARTIDO →</button>`
       : `<button class="btn" data-route="matches">VER DETALLE DEL PARTIDO →</button>`;
@@ -412,7 +420,6 @@ function widgetPlayInUpcoming(w, division){
   const round = pl.bracket.rounds.find(r => r.id === 'playIn');
   if (!round) return cardHero('PRÓXIMO PLAY-IN', '<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Sin ronda de Play-In</div>');
 
-  // Mostrar primero los pendientes/live, luego los finalizados (todos con teams)
   const pending = round.matches.filter(m => !m.winnerId && m.teamA && m.teamB);
   const itemIds = w.config?.itemIds || [];
   let matches;
@@ -471,12 +478,10 @@ function renderPlayoffMatchHero(m, round, division){
       ? (division.config.semiFormat || 'BO5')
       : (division.config.playInFormat || 'BO5');
 
-  // Badge superior
   let topBadge = '';
   if (isFinished) topBadge = `<div class="hero-final-badge" style="margin-bottom:10px">✓ FINAL</div>`;
   else if (hasGames) topBadge = `<div class="hero-live-badge" style="margin-bottom:10px">EN JUEGO</div>`;
 
-  // Bloque central
   let centerBlock;
   if (hasGames || isFinished){
     const winnerIsA = isFinished && sA > sB;
@@ -492,7 +497,6 @@ function renderPlayoffMatchHero(m, round, division){
     centerBlock = `<div class="hero-vs">VS</div>`;
   }
 
-  // Metadata
   let metaLine;
   if (hasGames && !isFinished){
     metaLine = `<span class="chip chip-accent">${format}</span> <span style="color:var(--muted);font-size:11px;margin-left:8px">· ${games.length} partida${games.length !== 1 ? 's' : ''} jugada${games.length !== 1 ? 's' : ''}</span>`;
@@ -503,7 +507,6 @@ function renderPlayoffMatchHero(m, round, division){
     metaLine = `<span class="chip chip-accent">${format}</span>`;
   }
 
-  // Botón
   const footerBtn = (hasGames || isFinished)
     ? `<div class="hero-footer"><button class="btn" data-open-playoff-summary="${m.id}" data-round-id="${round.id}">VER DETALLE DEL PARTIDO →</button></div>`
     : '';

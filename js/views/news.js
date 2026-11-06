@@ -3,7 +3,7 @@
 // ============================================================
 import { getDB } from '../services/storage.js';
 import { openModal } from '../services/ui.js';
-import { renderBlocksHTML, parseDiscordText } from './dashboard.js'; // 🔥 IMPORTADO parseDiscordText
+import { renderBlocksHTML, parseDiscordText } from './dashboard.js';
 
 function esc(str){
   return String(str ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
@@ -14,10 +14,17 @@ function esc(str){
 // ============================================================
 export function newsView(){
   const db = getDB();
+  
+  // 🔥 FIX: Ordenar de más reciente a más antiguo
   const sorted = [...db.news].sort((a, b) => {
+    // 1. Las fijadas (pinned) siempre van primero
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return 1;
-    return (b.date || '').localeCompare(a.date || '');
+    
+    // 2. Si ambas están fijadas o ninguna, ordenar por fecha descendente
+    const dateA = new Date(a.date || 0).getTime();
+    const dateB = new Date(b.date || 0).getTime();
+    return dateB - dateA;
   });
 
   return `
@@ -62,7 +69,6 @@ function openNewsModal(id){
   const n = db.news.find(x => x.id === id);
   if (!n) return;
 
-  // 🔥 FIX: Aplicar parseDiscordText también a las noticias simples
   const body = (n.blocks && n.blocks.length > 0)
     ? renderBlocksHTML(n.blocks, db)
     : `<div class="news-modal-body">${parseDiscordText(esc((n.body || '')).replace(/\n/g, '<br>'))}</div>`;

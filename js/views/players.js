@@ -5,7 +5,7 @@ import { getDB } from '../services/storage.js';
 import { aggregatePlayerStats, computeRankings } from '../services/statistics.js';
 import { streakLabel } from '../services/pig.js';
 import { getNationFlag, getNationName, platformIcon, getRankColor, getRankLabelResponsive } from '../data/nations.js';
-import { openModal, toast } from '../services/ui.js'; // 🔥 AÑADIDO toast
+import { openModal, toast } from '../services/ui.js';
 import { renderVitrina } from '../services/trophies.js';
 import { state } from '../state.js';
 import { calculatePlayerPrice } from '../services/economy.js';
@@ -139,8 +139,6 @@ function playerRow(p, i, allStats){
   const rankLine = getRankLabelResponsive(p.rank, p.rankLevel, p.rankDivision);
   const trophies = p.trophies || [];
   
-  const isFreeAgent = p.status === 'free_agent' || (!s.teamId);
-
   return `<tr style="cursor:pointer" data-player-profile="${p.id}">
     <td class="col-pos">${i + 1}</td>
     <td class="col-player">
@@ -196,7 +194,6 @@ function playerProfileView(p){
   const teamDisplay = currentTeam ? esc(currentTeam.name) : '<span style="color:var(--gold)">AGENTE LIBRE</span>';
   const trendSymbol = stats.pigTrend || '—';
 
-  // 🔥 Helper para íconos de redes
   const getSocialIcon = (platform) => {
     switch (platform) {
       case 'discord': return 'fa-brands fa-discord';
@@ -236,18 +233,12 @@ function playerProfileView(p){
             ? `<a href="${p.rlTracker}" target="_blank" class="player-tracker-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> RL TRACKER ↗</a>`
             : ''}
 
-          <!-- 🔥 NUEVA SECCIÓN: Discord ID y Redes Sociales -->
-          ${(p.discordId || (p.socials && p.socials.length > 0)) ? `
+          <!-- 🔥 FIX: Solo mostramos redes sociales (links), NO el discordId privado -->
+          ${(p.socials && p.socials.length > 0) ? `
             <div style="display:flex; gap:8px; margin-top:14px; align-items:center; flex-wrap:wrap;">
-              ${p.discordId ? `
-                <button class="btn btn-sm" id="copyDiscordBtn" data-id="${p.discordId}" style="cursor:pointer; border-color:rgba(88, 101, 242, 0.4); color:#5865F2; background:rgba(88, 101, 242, 0.1); display:flex; gap:6px; align-items:center;" title="Copiar ID de Discord">
-                  <i class="fa-brands fa-discord"></i> ${p.discordId} <i class="fa-regular fa-copy" style="margin-left:4px; opacity:0.7;"></i>
-                </button>
-              ` : ''}
-              
               ${(p.socials || []).map(s => `
-                <a href="${s.url}" target="_blank" class="btn btn-sm" style="width:32px; height:32px; padding:0; border-radius:50%; display:flex; align-items:center; justify-content:center;" title="${s.platform}">
-                  <i class="${getSocialIcon(s.platform)}"></i>
+                <a href="${s.url}" target="_blank" class="btn btn-sm" style="padding: 6px 12px; border-radius: 6px; display:flex; align-items:center; gap:6px;" title="${s.platform}">
+                  <i class="${getSocialIcon(s.platform)}"></i> ${s.platform.charAt(0).toUpperCase() + s.platform.slice(1)}
                 </a>
               `).join('')}
             </div>
@@ -351,18 +342,6 @@ function playerProfileView(p){
 export function bindPlayersEvents(){
   document.querySelectorAll('[data-player-profile]').forEach(row =>
     row.addEventListener('click', () => { location.hash = '#/players/' + row.dataset.playerProfile; }));
-
-  // 🔥 NUEVO: Copiar ID de Discord
-  document.getElementById('copyDiscordBtn')?.addEventListener('click', (e) => {
-    const discordId = e.currentTarget.dataset.id;
-    if (!discordId) return;
-    navigator.clipboard.writeText(discordId).then(() => {
-      toast('✅ ID de Discord copiado', 'success');
-    }).catch(err => {
-      console.error('Error al copiar:', err);
-      toast('No se pudo copiar el ID', 'error');
-    });
-  });
 
   document.querySelectorAll('[data-snapshot-idx]').forEach(row => {
     row.addEventListener('click', () => {

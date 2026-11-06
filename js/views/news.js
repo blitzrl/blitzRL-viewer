@@ -3,7 +3,7 @@
 // ============================================================
 import { getDB } from '../services/storage.js';
 import { openModal } from '../services/ui.js';
-import { renderBlocksHTML } from './dashboard.js';
+import { renderBlocksHTML, parseDiscordText } from './dashboard.js'; // 🔥 IMPORTADO parseDiscordText
 
 function esc(str){
   return String(str ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
@@ -62,9 +62,10 @@ function openNewsModal(id){
   const n = db.news.find(x => x.id === id);
   if (!n) return;
 
+  // 🔥 FIX: Aplicar parseDiscordText también a las noticias simples
   const body = (n.blocks && n.blocks.length > 0)
     ? renderBlocksHTML(n.blocks, db)
-    : `<div class="news-modal-body">${esc((n.body || '')).replace(/\n/g, '<br>')}</div>`;
+    : `<div class="news-modal-body">${parseDiscordText(esc((n.body || '')).replace(/\n/g, '<br>'))}</div>`;
 
   openModal({
     id: 'news-view-' + id,

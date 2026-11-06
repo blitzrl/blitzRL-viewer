@@ -306,9 +306,10 @@ function showCoachProfile(coachId) {
   if (c.socials?.youtube) socialsList.push({ icon: 'fa-brands fa-youtube', url: c.socials.youtube, label: 'YouTube' });
   if (c.socials?.instagram) socialsList.push({ icon: 'fa-brands fa-instagram', url: c.socials.instagram, label: 'Instagram' });
   
+  // 🔥 FIX: Solo mostramos el link de discord de la sección socials, no el campo privado discordId
   if (c.socials?.discord) {
     const isUrl = c.socials.discord.startsWith('http') || c.socials.discord.startsWith('discord.gg');
-    socialsList.push({ icon: 'fa-brands fa-discord', url: isUrl ? c.socials.discord : null, label: c.socials.discord, isUser: !isUrl });
+    socialsList.push({ icon: 'fa-brands fa-discord', url: isUrl ? c.socials.discord : null, label: 'Discord', isUser: !isUrl });
   }
   
   if (c.customLinks && c.customLinks.length > 0) {
@@ -340,12 +341,6 @@ function showCoachProfile(coachId) {
       <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
         ${c.rlTracker ? `<a href="${c.rlTracker}" target="_blank" class="btn btn-sm" style="color:var(--accent); border-color:var(--accent)">RL Tracker ↗</a>` : ''}
         
-        ${c.discordId ? `
-          <button class="btn btn-sm" id="copyCoachDiscordBtn" data-id="${c.discordId}" style="cursor:pointer; border-color:rgba(88, 101, 242, 0.4); color:#5865F2; background:rgba(88, 101, 242, 0.1); display:flex; gap:6px; align-items:center; max-width:100%;" title="Copiar ID de Discord">
-            <i class="fa-brands fa-discord"></i> <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c.discordId)}</span> <i class="fa-regular fa-copy" style="margin-left:4px; opacity:0.7;"></i>
-          </button>
-        ` : ''}
-
         ${socialsList.map(s => {
           if (s.isUser) {
             return `<div class="btn btn-sm" style="color:#5865F2; border-color:#5865F2; cursor:default;"><i class="${s.icon}"></i> ${esc(s.label)}</div>`;
@@ -354,19 +349,7 @@ function showCoachProfile(coachId) {
         }).join('')}
       </div>
     `,
-    footer: `<button class="btn btn-ghost" data-close>CERRAR</button>`,
-    onMount: (root) => {
-      root.querySelector('#copyCoachDiscordBtn')?.addEventListener('click', (e) => {
-        const discordId = e.currentTarget.dataset.id;
-        if (!discordId) return;
-        navigator.clipboard.writeText(discordId).then(() => {
-          toast('✅ ID de Discord copiado', 'success');
-        }).catch(err => {
-          console.error('Error al copiar:', err);
-          toast('No se pudo copiar el ID', 'error');
-        });
-      });
-    }
+    footer: `<button class="btn btn-ghost" data-close>CERRAR</button>`
   });
 }
 
@@ -375,17 +358,14 @@ window.showCoachProfile = showCoachProfile;
 export function bindRostersEvents(){
   document.querySelectorAll('[data-team-profile]').forEach(card =>
     card.addEventListener('click', (e) => { 
-      // Si el clic fue en un nombre de coach, detenemos la propagación para no abrir la tarjeta del equipo
       if(e.target.closest('[data-show-coach]')) return; 
       location.hash = '#/rosters/' + card.dataset.teamProfile; 
     }));
 
-  // 🔥 FASE 1: Manejo de clic directo y limpio para los coaches
   document.querySelectorAll('[data-show-coach]').forEach(el => {
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      showCoachProfile(el.dataset.showCoach);
+    el.addEventListener('click', (e) => { 
+      e.stopPropagation(); 
+      showCoachProfile(el.dataset.showCoach); 
     });
   });
 
